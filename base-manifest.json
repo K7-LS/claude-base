@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "name": "llm-base",
+  "targets": {
+    "claude": {
+      "rules": "targets/claude/CLAUDE.md",
+      "active_agents": [
+        "auditor"
+      ],
+      "active_skills": []
+    },
+    "codex": {
+      "rules": "targets/codex/AGENTS.md",
+      "active_agents": [
+        "auditor"
+      ],
+      "active_skills": []
+    },
+    "opencode": {
+      "rules": "targets/opencode/AGENTS.md",
+      "active_agents": [
+        "auditor"
+      ],
+      "active_skills": []
+    }
+  },
+  "catalog": {
+    "agents": "agents",
+    "skills": "skills",
+    "activation": "explicit"
+  },
+  "sync": {
+    "direction": "hub-to-consumer",
+    "role_marker": ".developer-marker",
+    "consumer_push": false,
+    "consumer_feedback_upload": false,
+    "consumer_session_upload": false
+  },
+  "secrets": {
+    "copy_auth": false,
+    "copy_environment": false,
+    "redact_diagnostics": true
+  }
+}

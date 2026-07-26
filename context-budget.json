@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "estimator": "ceil(utf8_bytes/3)",
+  "limits": {
+    "core_tokens": 1800,
+    "target_tokens": 800,
+    "catalog_tokens": 500,
+    "startup_total_tokens": 3000
+  },
+  "simple_prompt": {
+    "tool_calls": 0,
+    "subagents": 0,
+    "reviewers": 0
+  }
+}

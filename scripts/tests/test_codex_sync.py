@@ -431,6 +431,42 @@ def test_sync_reads_skills_manifest_once(make_canon, monkeypatch):
     assert sync(home) == 0
     assert reads == 1
 
+def test_base_manifest_limits_legacy_codex_agents_and_skills(make_canon):
+    import json as _json
+    from codex_sync import _load_sync_context, render_target_codex
+
+    home = make_canon()
+    claude = home / ".claude"
+    skill = claude / "skills" / "тест-скилл"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("---\nname: тест-скилл\n---\n", encoding="utf-8")
+    (claude / "codex-layer" / "skills-manifest.json").write_text(
+        _json.dumps({"enable": ["тест-скилл"]}), encoding="utf-8"
+    )
+    (claude / "base-manifest.json").write_text(
+        _json.dumps(
+            {
+                "schema": 1,
+                "targets": {
+                    "codex": {
+                        "active_agents": ["тест-агент"],
+                        "active_skills": [],
+                    }
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    context = _load_sync_context(home)
+    rendered = render_target_codex(home, context=context)
+
+    assert {key for key in rendered if key.startswith("agents/")} == {
+        "agents/тест-агент.toml"
+    }
+    assert context["active_skills"] == []
+
 def test_manifest_inputs_are_diagnostic_provenance(make_canon):
     from codex_sync import check, collect_inputs, load_manifest, sync
     assert "диагност" in collect_inputs.__doc__.lower()
@@ -505,6 +541,94 @@ def test_check_reports_missing_skill_junction_and_sync_heals(make_canon):
     assert "skills/тест-скилл#junction" in res["canon-newer"]
     assert sync(home) == 0                                    # sync вылечил
     assert j.exists() and check(home)["canon-newer"] == []
+
+def test_base_manifest_empty_active_skills_creates_no_junction(make_canon):
+    import json as _json
+    from codex_sync import sync
+
+    home = make_canon()
+    claude = home / ".claude"
+    skill = claude / "skills" / "тест-скилл"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("---\nname: тест-скилл\n---\n", encoding="utf-8")
+    (claude / "codex-layer" / "skills-manifest.json").write_text(
+        _json.dumps({"enable": ["тест-скилл"]}), encoding="utf-8"
+    )
+    (claude / "base-manifest.json").write_text(
+        _json.dumps(
+            {
+                "schema": 1,
+                "targets": {
+                    "codex": {
+                        "active_agents": ["тест-агент"],
+                        "active_skills": [],
+                    }
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert sync(home) == 0
+    assert not (home / ".agents" / "skills" / "тест-скилл").exists()
+
+def test_sync_retires_previous_managed_agent_when_activation_shrinks(make_canon):
+    import json as _json
+    from codex_sync import sync
+
+    home = make_canon()
+    assert sync(home) == 0
+    agent = home / ".codex" / "agents" / "тест-агент.toml"
+    assert agent.is_file()
+
+    (home / ".claude" / "base-manifest.json").write_text(
+        _json.dumps(
+            {
+                "schema": 1,
+                "targets": {
+                    "codex": {
+                        "active_agents": [],
+                        "active_skills": [],
+                    }
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert sync(home) == 0
+    assert not agent.exists()
+    assert agent.with_suffix(".toml.bak-codex-sync").is_file()
+
+def test_sync_preserves_modified_retired_agent(make_canon):
+    import json as _json
+    from codex_sync import sync
+
+    home = make_canon()
+    assert sync(home) == 0
+    agent = home / ".codex" / "agents" / "тест-агент.toml"
+    agent.write_text(agent.read_text(encoding="utf-8") + "\n# local\n", encoding="utf-8")
+    (home / ".claude" / "base-manifest.json").write_text(
+        _json.dumps(
+            {
+                "schema": 1,
+                "targets": {
+                    "codex": {
+                        "active_agents": [],
+                        "active_skills": [],
+                    }
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert sync(home) == 3
+    assert agent.is_file()
+    assert "# local" in agent.read_text(encoding="utf-8")
 
 def test_foreign_skill_directory_is_manual_drift_and_preserved(make_canon):
     import json as _json

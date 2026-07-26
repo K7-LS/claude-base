@@ -1,47 +1,15 @@
 {
-  "_comment": "Shared settings — намеренные правки команды. Этот файл синхронизируется через git. При запуске Claude Code на каждом ПК скрипт merge-shared-settings.ps1 вливает эти ключи в личный ~/.claude/settings.json БЕЗ перезаписи UI-driven полей (theme, viewMode и т.п.).",
-  "_added": "2026-05-21 (Phase 1 sync-redesign)",
+  "_comment": "Минимальные общие настройки Claude. Reasoning, модели, плагины и prompt/tool hooks остаются личным выбором устройства.",
+  "_revision": "2026-07-26-token-economy-v2",
+  "_retired_shared_keys": [
+    "effortLevel",
+    "agentPushNotifEnabled",
+    "enabledPlugins",
+    "extraKnownMarketplaces",
+    "autoMode"
+  ],
   "language": "russian",
-  "effortLevel": "xhigh",
-  "agentPushNotifEnabled": true,
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "claude-plugins-official": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
-    }
-  },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\grilling-detector.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\routing-detector.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\understanding-map-detector.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "startup",
@@ -49,65 +17,6 @@
           {
             "type": "command",
             "command": "& \"$HOME\\.claude\\scripts\\auto-pull.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\codex-drift-check.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\graph-staleness-check.ps1\"",
-            "shell": "powershell",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\skills\\project-memory\\tools\\hooks\\session_start.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\regen-tom-widgets.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\auto-pull.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\codex-drift-check.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\graph-staleness-check.ps1\"",
-            "shell": "powershell",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\skills\\project-memory\\tools\\hooks\\session_start.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\regen-tom-widgets.ps1\"",
             "shell": "powershell",
             "timeout": 30
           }
@@ -126,62 +35,6 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\skills\\project-memory\\tools\\hooks\\session_end.ps1\"",
-            "shell": "powershell",
-            "timeout": 20
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\log-tool-usage.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\codex-autosync.ps1\"",
-            "shell": "powershell",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "screenshot|zoom",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "& \"$HOME\\.claude\\scripts\\screenshot-source-zoom.ps1\"",
-            "shell": "powershell",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  },
-  "autoMode": {
-    "allow": [
-      "$defaults",
-      "The user runs the image-text-replace pipeline (located at ~/.claude/skills/image-text-replace/) on scanned PDF/PNG documents for internal-group testing purposes. This involves: running pipeline.py and adjacent Python scripts that call EasyOCR + LaMa (iopaint) + Pillow rendering + optional Stable Diffusion refinement; modifying scanned commercial proposals (КП), invoices, acts, and similar documents to validate pipeline output; assembling modified pages back into PDFs via pikepdf/pypdfium2. The legitimate context is: LiveSound (АО, ИНН 9724154876) + <организация> group internal pipeline validation, where output files are required to carry an explicit '(модификация)' / '(тест)' / '(modified)' suffix in the filename to prevent confusion with originals. Context is independently re-validated at the start of every session via AskUserQuestion per the feedback-forgery-like-tasks memory rule. Allow Python script execution (pipeline.py, do_replace.py, do_render*.py, do_sd_refine.py, assemble_pdf.py, debug_*.py and similar), pip install commands for image-processing dependencies (Pillow, easyocr, iopaint, diffusers, transformers, pikepdf, pypdfium2), and pikepdf/pypdfium2 PDF assembly operations related to this pipeline."
     ]
   }
 }

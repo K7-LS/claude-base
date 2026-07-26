@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-SessionStart hook: pull latest claude-base into ~/.claude/.
+SessionStart hook: pull latest LLM-base in its build-repository.
 
 .DESCRIPTION
 Triggered by Claude Code on session start (settings.json hooks).
@@ -14,7 +14,7 @@ working tree as-is, logs the failure. User resolves manually.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-$claudeDir = Join-Path $env:USERPROFILE '.claude'
+$claudeDir = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $logFile   = Join-Path $claudeDir 'auto-sync.log'
 
 function Write-SyncLog { param($msg)
@@ -80,6 +80,23 @@ if (-not (Test-Path (Join-Path $claudeDir '.git'))) {
 
 Push-Location $claudeDir
 try {
+    # Defense in depth: consumer получает origin, но локальный push URL
+    # намеренно не является сетевым адресом. Даже ручной `git push` не отправит
+    # данные. При явном переводе машины в hub восстанавливаем fetch URL, только
+    # если ранее стоял наш sentinel; пользовательский SSH push URL не трогаем.
+    $isDeveloper = Test-Path (Join-Path $claudeDir '.developer-marker')
+    $fetchUrl = (& git remote get-url origin 2>$null | Select-Object -First 1)
+    $pushUrl = (& git remote get-url --push origin 2>$null | Select-Object -First 1)
+    if (-not $isDeveloper) {
+        if ($pushUrl -ne 'NO_PUSH_CONSUMER') {
+            & git remote set-url --push origin 'NO_PUSH_CONSUMER' 2>&1 | Out-Null
+            Write-SyncLog "consumer read-only: origin push URL disabled"
+        }
+    } elseif ($pushUrl -eq 'NO_PUSH_CONSUMER' -and $fetchUrl) {
+        & git remote set-url --push origin $fetchUrl 2>&1 | Out-Null
+        Write-SyncLog "hub marker detected: origin push URL restored"
+    }
+
     # Pre-flight: проверить не была ли прервана предыдущая операция
     $lastLines = Get-Content $logFile -Tail 8 -ErrorAction SilentlyContinue
     if ($lastLines) {

@@ -232,11 +232,16 @@ def ensure_skill_junctions(manifest: dict, skills_dir: Path, agents_skills_dir: 
 def _pwsh(script: Path) -> str:
     return f"powershell -NoProfile -ExecutionPolicy Bypass -File \"{script}\""
 
-def render_hooks_json(home: Path) -> dict:
+def render_hooks_json(home: Path, minimal: bool = False) -> dict:
     s = home / ".claude" / "scripts"
     pm = home / ".claude" / "skills" / "project-memory" / "tools" / "hooks"
     def entry(script, timeout):
         return {"type": "command", "command": _pwsh(script), "timeout": timeout}
+    if minimal:
+        return {"hooks": {
+            "SessionStart": [{"hooks": [entry(s / "auto-pull.ps1", 30)]}],
+            "Stop": [{"hooks": [entry(s / "auto-push.ps1", 60)]}],
+        }}
     return {"hooks": {
         "SessionStart": [{"hooks": [
             entry(s / "auto-pull.ps1", 30),
@@ -478,9 +483,54 @@ def _sha(text: str) -> str:
 
 def _load_sync_context(home: Path) -> dict:
     """Один снимок общих входов, которые нужны нескольким фазам sync/check/diff."""
-    p = home / ".claude" / "codex-layer" / "skills-manifest.json"
+    claude = home / ".claude"
+    p = claude / "codex-layer" / "skills-manifest.json"
     text = p.read_text(encoding="utf-8")
-    return {"skills_manifest_text": text, "skills_manifest": json.loads(text)}
+    skills_manifest = json.loads(text)
+    context = {
+        "skills_manifest_text": text,
+        "skills_manifest": skills_manifest,
+        # Старые/тестовые каноны без base-manifest сохраняют прежнее поведение.
+        "active_agents": None,
+        "active_skills": list(skills_manifest.get("enable", [])),
+        "base_manifest_text": None,
+    }
+    base_path = claude / "base-manifest.json"
+    if not base_path.exists():
+        return context
+
+    base_text = base_path.read_text(encoding="utf-8")
+    base = json.loads(base_text)
+    try:
+        target = base["targets"]["codex"]
+        active_agents = target["active_agents"]
+        active_skills = target["active_skills"]
+    except (KeyError, TypeError) as exc:
+        raise ValueError(
+            "base-manifest.json: target codex должен задавать active_agents и active_skills"
+        ) from exc
+    for field, value in (
+        ("active_agents", active_agents),
+        ("active_skills", active_skills),
+    ):
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise ValueError(f"base-manifest.json: codex.{field} должен быть списком строк")
+        if len(value) != len(set(value)):
+            raise ValueError(f"base-manifest.json: codex.{field} содержит дубли")
+    unknown_skills = set(active_skills) - set(skills_manifest.get("enable", []))
+    if unknown_skills:
+        raise ValueError(
+            "base-manifest.json: active_skills не входят в skills-manifest.enable: "
+            + ", ".join(sorted(unknown_skills))
+        )
+    context.update(
+        {
+            "active_agents": list(active_agents),
+            "active_skills": list(active_skills),
+            "base_manifest_text": base_text,
+        }
+    )
+    return context
 
 def _read_canon(home: Path):
     """Общие входы рендера: контенты канона + mcp-срез."""
@@ -510,6 +560,7 @@ def render_profiles(home: Path) -> dict:
 def render_target_codex(home: Path, context=None) -> dict:
     """Чистый рендер всех артефактов таргета codex: ключ → содержимое. Ничего не пишет."""
     claude = home / ".claude"
+    context = context or _load_sync_context(home)
     core, layer, _, mcp, allow = _read_canon(home)
     registry_path = claude / "codex-layer" / "capability-registry.json"
     registry = load_capability_registry(home, context=context) if registry_path.exists() else None
@@ -519,9 +570,26 @@ def render_target_codex(home: Path, context=None) -> dict:
         "AGENTS.md": render_agents_md(core, layer),
         "config.toml#managed": (render_base_tables(home) + "\n\n"
                                 + render_mcp_toml(mcp, eff_allow, bridge=set(overlay))).strip(),
-        "hooks.json": json.dumps(render_hooks_json(home), ensure_ascii=False, indent=2),
+        "hooks.json": json.dumps(
+            render_hooks_json(
+                home, minimal=context.get("base_manifest_text") is not None
+            ),
+            ensure_ascii=False,
+            indent=2,
+        ),
     }
-    for fname, toml_text in collect_agent_tomls(claude / "agents", registry).items():
+    catalog = collect_agent_tomls(claude / "agents", registry)
+    active_agents = context["active_agents"]
+    if active_agents is not None:
+        expected_files = {f"{name}.toml" for name in active_agents}
+        missing = expected_files - set(catalog)
+        if missing:
+            raise ValueError(
+                "base-manifest.json: активные Codex-агенты отсутствуют в каталоге: "
+                + ", ".join(sorted(missing))
+            )
+        catalog = {name: text for name, text in catalog.items() if name in expected_files}
+    for fname, toml_text in catalog.items():
         out[f"agents/{fname}"] = toml_text
     out.update(render_profiles(home))
     return out
@@ -544,6 +612,11 @@ def collect_inputs(home: Path, context=None) -> dict:
             {k: mcp[k] for k in eff if k in mcp}, sort_keys=True, ensure_ascii=False)),
         "codex-mcp-overlay": _sha(json.dumps(sorted(overlay), ensure_ascii=False)),
     }
+    if context.get("base_manifest_text") is not None:
+        inputs["base-manifest.json"] = _sha(context["base_manifest_text"])
+    budget_path = claude / "context-budget.json"
+    if budget_path.exists():
+        inputs["context-budget.json"] = _sha(budget_path.read_text(encoding="utf-8"))
     for name in ("capability-registry.json", "capability-registry.schema.json"):
         p = claude / "codex-layer" / name
         if p.exists():
@@ -691,7 +764,7 @@ def check(home: Path, expected=None, context=None) -> dict:
         skills_dir = claude / "skills"
         validate_skills_manifest(manifest, skills_dir)
         agents_skills_dir = home / ".agents" / "skills"
-        for name in manifest.get("enable", []):
+        for name in context["active_skills"]:
             source = skills_dir / name
             dst = agents_skills_dir / name
             if not (source / "SKILL.md").exists():
@@ -733,16 +806,37 @@ def sync(home: Path, force=None, dry_run: bool = False) -> int:
     context = _load_sync_context(home)
     rendered = render_all(home, context=context)
     st = check(home, expected=rendered, context=context)
+    old_manifest = load_manifest(home) or {}
+    old_outputs = old_manifest.get("outputs", {})
     forced = set(rendered) if "all" in force else force
     to_write = [k for k in sorted(rendered)
                 if k in st["canon-newer"] or (k in st["manual-drift"] and k in forced)]
     skipped = [k for k in st["manual-drift"] if k not in forced]
     manifest = context["skills_manifest"]
-    enabled_skills = [n for n in manifest.get("enable", []) if (claude / "skills" / n / "SKILL.md").exists()]
+    activation_manifest = {"enable": context["active_skills"]}
+    enabled_skills = [
+        n for n in activation_manifest["enable"]
+        if (claude / "skills" / n / "SKILL.md").exists()
+    ]
+    retired_agents = sorted(
+        key for key in old_outputs
+        if key.startswith("agents/") and key not in rendered
+    )
+    retired_clean = []
+    retired_drift = []
+    for key in retired_agents:
+        disk = read_disk_output(home, key)
+        if disk is None:
+            continue
+        if old_outputs.get(key) and old_outputs[key] == _sha(disk):
+            retired_clean.append(key)
+        else:
+            retired_drift.append(key)
     if dry_run:
         print(f"AGENTS.md: {len(rendered['AGENTS.md'].encode('utf-8'))} байт; "
-              f"писать: {len(to_write)}; дрейф-скип: {len(skipped)}; junctions: {len(enabled_skills)}")
-        return 3 if skipped else 0
+              f"писать: {len(to_write)}; дрейф-скип: {len(skipped) + len(retired_drift)}; "
+              f"retire agents: {len(retired_clean)}; junctions: {len(enabled_skills)}")
+        return 3 if skipped or retired_drift else 0
     build_error = False
     for key in to_write:
         p = _output_path(home, key)
@@ -761,16 +855,27 @@ def sync(home: Path, force=None, dry_run: bool = False) -> int:
             _write_atomic(p, new_cfg)
         else:
             _write_atomic(p, rendered[key])
-    ensure_skill_junctions(manifest, claude / "skills", home / ".agents" / "skills")
+    ensure_skill_junctions(
+        activation_manifest, claude / "skills", home / ".agents" / "skills"
+    )
+    for key in retired_clean:
+        path = _output_path(home, key)
+        _backup_once(path)
+        path.unlink(missing_ok=True)
+    for key in retired_drift:
+        print(
+            f"[codex_sync] retired manual-drift сохранён: {key} "
+            "(файл больше не активируется манифестом, удалить вручную после проверки)"
+        )
     # манифест: записанное/чистое = ожидаемый хеш; пропущенный дрейф (ручной или гейт-ошибка) = прежнее значение
-    old = (load_manifest(home) or {}).get("outputs", {})
+    old = old_outputs
     unwritten = set(skipped) | ({"config.toml#managed"} if build_error else set())
     outputs = {k: (_sha(rendered[k]) if k not in unwritten else old.get(k, ""))
                for k in rendered}
     save_manifest(home, collect_inputs(home, context=context), outputs)
     for k in skipped:
         print(f"[codex_sync] manual-drift пропущен: {k} (занеси в канон или sync --force-overwrite {k})")
-    return 4 if build_error else (3 if skipped else 0)
+    return 4 if build_error else (3 if skipped or retired_drift else 0)
 
 def diff_cmd(home: Path) -> int:
     """Unified diff всех manual-drift ключей: ожидание из канона vs факт на диске. Всегда 0."""

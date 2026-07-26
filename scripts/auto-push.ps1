@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-SessionEnd hook: commit and push managed paths in ~/.claude/ to claude-base.
+SessionEnd hook: hub-only publication of managed LLM-base source paths.
 
 .DESCRIPTION
 Triggered by Claude Code on session end (settings.json hooks).
@@ -8,8 +8,8 @@ Checks git status of WHITELIST paths. If there are changes -- commits and
 pushes to origin/main. Logs to ~/.claude/auto-sync.log.
 
 Whitelist (managed paths -- only these are auto-committed):
-    agents/, skills/, commands/, memory/, session-reports/, harvested/,
-    CLAUDE.md, README.md
+    core/, targets/, agents/, skills/, commands/, memory/, session-reports/,
+    harvested/, base-manifest.json, context-budget.json, CLAUDE.md, README.md
 
 Anything outside the whitelist is NEVER auto-committed -- protects against
 accidental push of credentials, history, plugins, projects, _sandbox, etc.
@@ -23,7 +23,7 @@ push. User resolves on next manual interaction.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-$claudeDir = Join-Path $env:USERPROFILE '.claude'
+$claudeDir = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $logFile   = Join-Path $claudeDir 'auto-sync.log'
 
 # Whitelist of managed paths. Files OUTSIDE these are NEVER auto-committed.
@@ -39,6 +39,11 @@ $Managed = @(
     'session-reports',
     'harvested',
     'formatting-templates',
+    'core',
+    'targets',
+    'codex-layer',
+    'base-manifest.json',
+    'context-budget.json',
     'CLAUDE.md',
     'README.md',
     'CHANGELOG.md',
@@ -141,23 +146,13 @@ try {
         }
     }
 
-    # === Role detection (Phase 2 sync-redesign 2026-05-21) ===
-    # DANIILPC (developer) имеет .developer-marker — push'ит в main как обычно.
-    # Сотрудники без marker'а — consumer mode: запускают feedback-collector
-    # вместо push в main. Это разделяет hub-and-spoke: Daniil = writer, остальные = read+feedback.
+    # === Односторонняя роль hub -> consumer ===
+    # Только явно помеченный hub публикует изменения в main.
+    # Consumer не выполняет SessionEnd-сеть, не коммитит отчёты и ничего не
+    # отправляет обратно. Обновления для него приходят через auto-pull/sync-base.
     $isDeveloper = Test-Path (Join-Path $claudeDir '.developer-marker')
     if (-not $isDeveloper) {
-        Write-SyncLog "consumer mode (no .developer-marker) — running feedback-collector"
-        $feedbackScript = Join-Path $claudeDir 'scripts\feedback-collector.ps1'
-        if (Test-Path $feedbackScript) {
-            & powershell -NoProfile -ExecutionPolicy Bypass -File $feedbackScript 2>&1 | Out-Null
-            Write-SyncLog "feedback-collector finished"
-        } else {
-            Write-SyncLog "feedback-collector.ps1 not found — skip"
-        }
-        Write-SyncLog "DONE (consumer)"
-        # Pop-Location здесь НЕ нужен: exit внутри try гарантированно вызывает
-        # finally (Pop-Location там) — явный вызов давал двойной Pop (MINOR аудита)
+        Write-SyncLog "consumer read-only — SessionEnd upload disabled"
         exit 0
     }
 
@@ -174,9 +169,8 @@ try {
     # < 10» ловил настоящие короткие сессии (аудит нашёл реальный 9-строчный
     # транскрипт) — но у него длительность 0.118 с = стаб; настоящая сессия
     # живёт минуты. По reason НЕ гейтим («other» может приходить и у настоящих
-    # закрытий → риск отключить sync). Гейт стоит ПОСЛЕ consumer-ветки
-    # НАМЕРЕННО: feedback-collector на consumer-ПК работает как раньше
-    # (идемпотентен, глушить его нет причины).
+    # закрытий → риск отключить sync). Гейт стоит после consumer-ветки:
+    # consumer уже завершил работу локальным read-only no-op.
     # Fail-open: нет stdin/поля/строк/распарсенной длительности → пуш идёт.
     $EphemeralMaxLines = 10
     $EphemeralMaxSeconds = 60

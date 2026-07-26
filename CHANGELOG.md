@@ -9,6 +9,32 @@ Claude при новой сессии (через правило в CLAUDE.md).
 
 ---
 
+## 2026-07-26 — LLM-base v2: компактный контекст, OpenCode и one-way sync
+
+### Изменено
+
+- Общая база стала build-репозиторием с vendor-neutral core и отдельными
+  нативными target `claude`, `codex`, `opencode`.
+- Kimi больше не target; модель выбирается пользователем через провайдера
+  OpenCode без автоматического fallback.
+- Стартовый budget каждого target ограничен 3000 оценочных токенов; фактический
+  рендер занимает 1901–1976.
+- Простой запрос не запускает tools, agents или reviewers.
+- Shared Claude settings больше не навязывают xhigh, model, plugins,
+  marketplace, prompt/tool telemetry и fan-out.
+- Consumer sync стал строго односторонним: push, feedback и session upload
+  отключены; старый обратный transport удалён.
+- Добавлены безопасный JSONL token audit и отчёт по account-risk без публикации
+  prompt/секретов.
+- Foundation installer переведён на schema v2 и target-bound пакеты трёх
+  клиентов с раздельным state/rollback и consumer-by-default.
+
+### Release gate
+
+Synthetic fake-home tests не равны rollout. До immutable rendered source,
+frozen evidence, независимого аудита и отдельно разрешённого canary:
+`BLOCKED_APPROVED_FOUNDATION_SOURCE` / `FULL_RELEASE_NOT_PASS`.
+
 ## 2026-07-07 — Auto-push ожил (UTF-8 stdin), хуки project-memory включены, пакет Блоков 2/4 дошёл до всех
 
 ### Починено

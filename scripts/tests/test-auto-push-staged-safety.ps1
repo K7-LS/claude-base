@@ -1,8 +1,8 @@
 param([switch]$KeepTmp)
 $ErrorActionPreference = 'Stop'
 
-$hook = Join-Path (Split-Path $PSScriptRoot -Parent) 'auto-push.ps1'
-if (-not (Test-Path -LiteralPath $hook)) { throw 'auto-push hook not found' }
+$hookSource = Join-Path (Split-Path $PSScriptRoot -Parent) 'auto-push.ps1'
+if (-not (Test-Path -LiteralPath $hookSource)) { throw 'auto-push hook not found' }
 
 $tmp = Join-Path $env:TEMP ('auto-push-staged-safety-' + [guid]::NewGuid().ToString('N'))
 $originalProfile = $env:USERPROFILE
@@ -21,6 +21,10 @@ try {
     $repo = Join-Path $testHome '.claude'
     $remote = Join-Path $tmp 'remote.git'
     New-Item -ItemType Directory -Path $repo -Force | Out-Null
+    $repoScripts = Join-Path $repo 'scripts'
+    New-Item -ItemType Directory -Path $repoScripts -Force | Out-Null
+    $hook = Join-Path $repoScripts 'auto-push.ps1'
+    Copy-Item -LiteralPath $hookSource -Destination $hook
     Invoke-Git $tmp @('init', '--bare', $remote)
     Invoke-Git $repo @('init', '-b', 'main')
     Invoke-Git $repo @('config', 'user.email', 'test@example.invalid')

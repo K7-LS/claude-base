@@ -29,6 +29,8 @@
 # settings.shared.json в репо вместо него:
 !settings.shared.json
 !anti-patterns.md
+!base-manifest.json
+!context-budget.json
 # Scope-фильтр графа знаний (читается graphify detect, раздаётся команде)
 !.graphifyignore
 
@@ -43,6 +45,10 @@
 # Vendor-нейтральное ядро правил (общий текст для Claude- и Codex-слоёв)
 !core/
 !core/**
+
+# Нативные тонкие слои Claude / Codex / OpenCode.
+!targets/
+!targets/**
 
 # Структура агентов / скиллов / команд (рекурсивно)
 !agents/
@@ -129,7 +135,6 @@ _sandbox/*
 **/settings.local.json
 
 # Per-PC configs с secrets / per-machine путями (никогда в git)
-**/.feedback-config.json
 **/.library-config.json
 **/.developer-marker
 

@@ -29,6 +29,7 @@ Smoke-test ~/.claude/ — проверка что вся методическа�
 
 $ErrorActionPreference = 'Continue'
 $ClaudeDir = Join-Path $env:USERPROFILE '.claude'
+$isDeveloper = Test-Path (Join-Path $ClaudeDir '.developer-marker')
 
 $script:total = 0
 $script:passed = 0
@@ -68,11 +69,15 @@ Check "Repo is a git repository" {
     Test-Path (Join-Path $ClaudeDir '.git')
 } -Hint "Ожидается что ~/.claude/ это клон claude-base"
 
-Check "No commits ahead origin/main (everything pushed)" {
+Check "Role-consistent outbound state" {
     & git fetch --quiet origin main 2>&1 | Out-Null
-    $ahead = & git rev-list --count origin/main..HEAD 2>$null
-    ($ahead -eq '0' -or $ahead -eq 0)
-} -Hint "Есть локальные коммиты которые не пушнулись. auto-push при закрытии чата подхватит, либо вручную git push"
+    if ($isDeveloper) {
+        $ahead = & git rev-list --count origin/main..HEAD 2>$null
+        return ($ahead -eq '0' -or $ahead -eq 0)
+    }
+    $pushUrl = & git remote get-url --push origin 2>$null | Select-Object -First 1
+    $pushUrl -eq 'NO_PUSH_CONSUMER'
+} -Hint "Hub не должен иметь незапушенных коммитов; consumer обязан иметь origin push URL = NO_PUSH_CONSUMER"
 
 Check "Up-to-date with origin/main (no behind)" {
     $behind = & git rev-list --count HEAD..origin/main 2>$null
@@ -121,6 +126,43 @@ Check "anti-patterns.md has Category 6 (context discipline)" {
 
 Check "memory/ has backlog files" {
     Test-Path (Join-Path $ClaudeDir 'memory\backlog_promptfoo_semantic_tests.md')
+}
+
+Check "base-manifest.json declares Claude/Codex/OpenCode only" {
+    try {
+        $base = Get-Content (Join-Path $ClaudeDir 'base-manifest.json') -Raw -Encoding UTF8 |
+            ConvertFrom-Json
+    } catch { return $false }
+    $targets = @($base.targets.PSObject.Properties.Name | Sort-Object)
+    ($base.schema -eq 1) -and
+        (($targets -join ',') -eq 'claude,codex,opencode') -and
+        ($base.sync.direction -eq 'hub-to-consumer') -and
+        ($base.sync.consumer_push -eq $false) -and
+        ($base.sync.consumer_feedback_upload -eq $false) -and
+        ($base.sync.consumer_session_upload -eq $false)
+} -Hint "Ожидаются ровно три нативных target и one-way hub-to-consumer"
+
+Check "context-budget.json valid" {
+    try {
+        $budget = Get-Content (Join-Path $ClaudeDir 'context-budget.json') -Raw -Encoding UTF8 |
+            ConvertFrom-Json
+    } catch { return $false }
+    ($budget.limits.core_tokens -le 1800) -and
+        ($budget.limits.startup_total_tokens -le 3000) -and
+        ($budget.simple_prompt.tool_calls -eq 0) -and
+        ($budget.simple_prompt.subagents -eq 0) -and
+        ($budget.simple_prompt.reviewers -eq 0)
+}
+
+Check "Legacy reverse-feedback scripts absent" {
+    $retiredNames = @(
+        ('feedback' + '-collector.ps1'),
+        ('pull-' + 'feedback.ps1'),
+        ('Set-' + 'FeedbackToken.ps1')
+    )
+    @($retiredNames | Where-Object {
+        Test-Path (Join-Path $ClaudeDir ('scripts\' + $_))
+    }).Count -eq 0
 }
 
 # === [3] Scripts updated ===
@@ -177,8 +219,20 @@ Check "settings.json language='russian'" {
     $settings -and $settings.language -eq 'russian'
 }
 
-Check "settings.json effortLevel='xhigh'" {
-    $settings -and $settings.effortLevel -eq 'xhigh'
+Check "settings.json does not inherit forced xhigh" {
+    $settings -and (-not ($settings.PSObject.Properties.Name -contains 'effortLevel'))
+} -Hint "Общая база не задаёт reasoning effort; после миграции пользователь может выбрать его лично"
+
+Check "settings.shared.json has only minimal sync hooks" {
+    try {
+        $sharedSettings = Get-Content (Join-Path $ClaudeDir 'settings.shared.json') -Raw |
+            ConvertFrom-Json
+    } catch { return $false }
+    $hookNames = @($sharedSettings.hooks.PSObject.Properties.Name | Sort-Object)
+    (($hookNames -join ',') -eq 'SessionEnd,SessionStart') -and
+        (-not ($sharedSettings.PSObject.Properties.Name -contains 'effortLevel')) -and
+        (-not ($sharedSettings.PSObject.Properties.Name -contains 'enabledPlugins')) -and
+        (-not ($sharedSettings.PSObject.Properties.Name -contains 'autoMode'))
 }
 
 Check "settings.json enabledPlugins present" {
@@ -267,6 +321,22 @@ Check "settings.shared.json valid JSON" {
     try { Get-Content (Join-Path $ClaudeDir 'settings.shared.json') -Raw | ConvertFrom-Json | Out-Null; $true } catch { $false }
 }
 
+# === [9] Compact base verifier ===
+Write-Host ""
+Write-Host "[9] Compact base verifier" -ForegroundColor Yellow
+
+Check "base_cli.py verify" {
+    $baseCli = Join-Path $ClaudeDir 'scripts\base_cli.py'
+    if (-not (Test-Path $baseCli)) { return $false }
+    $py = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $py) {
+        Write-Host "         (Python не найден — JSON/role checks выше выполнены, CLI skipped)" -ForegroundColor DarkGray
+        return $true
+    }
+    & python $baseCli verify 2>&1 | Out-Null
+    $LASTEXITCODE -eq 0
+}
+
 # === Summary ===
 Write-Host ""
 Write-Host "=== Summary: $passed/$total passed ===" -ForegroundColor Cyan
@@ -281,6 +351,6 @@ if ($failed.Count -eq 0) {
         Write-Host "  - $f" -ForegroundColor Red
     }
     Write-Host ""
-    Write-Host "Next step: пришли список failures Даниилу/Claude — разберём." -ForegroundColor Yellow
+    Write-Host "Next step: исправь перечисленные failures и повтори verify." -ForegroundColor Yellow
     exit 1
 }

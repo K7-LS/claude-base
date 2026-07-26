@@ -74,24 +74,36 @@ def test_registry_required_capabilities_are_honest():
 
 
 def test_converter_has_no_raw_mcp_and_rejects_unknown_identifier():
-    from codex_sync import _map_raw_tools, load_capability_registry, render_target_codex
+    from codex_sync import (
+        _map_raw_tools,
+        collect_agent_tomls,
+        load_capability_registry,
+        render_target_codex,
+    )
 
     registry = load_capability_registry(HOME)
     rendered = render_target_codex(HOME)
     agents = [value for key, value in rendered.items() if key.startswith("agents/")]
-    assert len(agents) == 16
-    assert "mcp__" not in "\n".join(agents)
-    assert sum('sandbox_mode = "read-only"' in value for value in agents) == 7
+    assert set(key for key in rendered if key.startswith("agents/")) == {
+        "agents/auditor.toml"
+    }
+
+    catalog = collect_agent_tomls(CLAUDE / "agents", registry)
+    assert len(catalog) == 16
+    assert "mcp__" not in "\n".join(catalog.values())
+    assert sum('sandbox_mode = "read-only"' in value for value in catalog.values()) == 7
     with pytest.raises(ValueError, match="unresolved raw MCP tool"):
         _map_raw_tools("mcp__unknown__thing", registry)
 
 
 def test_real_registry_render_exposes_complete_adapter_contract():
-    """Реальный канон, а не мини-фикстура, порождает все 16 адаптеров."""
-    from codex_sync import render_target_codex
+    """Каталог остаётся полным, но в стартовый Codex-пакет входит только active-набор."""
+    from codex_sync import collect_agent_tomls, load_capability_registry, render_target_codex
 
+    catalog = collect_agent_tomls(CLAUDE / "agents", load_capability_registry(HOME))
+    assert set(path.removesuffix(".toml") for path in catalog) == _role_names()
     rendered = render_target_codex(HOME)
-    for role_id in _role_names():
+    for role_id in ("auditor",):
         text = rendered[f"agents/{role_id}.toml"]
         for field in (
             "[Capability adapter]", "required:", "optional:",
@@ -99,6 +111,24 @@ def test_real_registry_render_exposes_complete_adapter_contract():
             "verification.claude:", "verification.codex:", "fallback:", "handoff:",
         ):
             assert field in text, f"{role_id}: {field}"
+
+
+def test_real_manifest_renders_minimal_codex_hooks():
+    from codex_sync import render_target_codex
+
+    rendered = render_target_codex(HOME)
+    hooks = json.loads(rendered["hooks.json"])["hooks"]
+    assert set(hooks) == {"SessionStart", "Stop"}
+    serialized = json.dumps(hooks, ensure_ascii=False)
+    assert "auto-pull.ps1" in serialized
+    assert "auto-push.ps1" in serialized
+    for forbidden in (
+        "log-tool-usage",
+        "project-memory",
+        "graph-staleness",
+        "codex_context_governor",
+    ):
+        assert forbidden not in serialized
 
 
 def test_every_raw_identifier_in_actual_agents_resolves_by_registry():
@@ -120,3 +150,5 @@ def test_registry_and_schema_are_tracked_inputs():
     inputs = collect_inputs(HOME)
     assert "codex-layer/capability-registry.json" in inputs
     assert "codex-layer/capability-registry.schema.json" in inputs
+    assert "base-manifest.json" in inputs
+    assert "context-budget.json" in inputs

@@ -9,11 +9,8 @@ Updater 2.0 — one-command setup + проверка claude-base на любом
   [2] git pull origin main (с retry + bypass-proxy)
   [3] merge-shared-settings.ps1 (shared → personal settings.json)
   [4] verify-claude-base.ps1 (22 проверки)
-  [5] Если consumer + нет .feedback-config.json — спросить PAT интерактивно
-  [6] Если consumer + есть config — smoke-test push (создать тестовый feedback,
-      проверить что прошёл через GitHub API)
-  [7] Финальный summary с PASS/FAIL по каждому шагу
-  [8] Если что-то упало — точная диагностика с командой для починки
+  [5] Для consumer отключить push URL (read-only defense in depth)
+  [6] Финальный summary с PASS/FAIL по каждому шагу
 
 Запуск:
   - Double-click `Update-ClaudeBase.bat` в проводнике (рекомендуется)
@@ -23,7 +20,7 @@ Updater 2.0 — one-command setup + проверка claude-base на любом
 #>
 
 $ErrorActionPreference = 'Continue'
-$ClaudeDir = Join-Path $env:USERPROFILE '.claude'
+$ClaudeDir = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 
 $script:results = @()
 function Record { param([string]$Step, [string]$Status, [string]$Detail = "")
@@ -55,7 +52,7 @@ Section "1. Detect role"
 $isDeveloper = Test-Path (Join-Path $ClaudeDir '.developer-marker')
 if ($isDeveloper) {
     Write-Host "  Role: DEVELOPER (.developer-marker present)" -ForegroundColor Yellow
-    Write-Host "  -> Будут пропущены шаги feedback-config + smoke-test (они только для consumer)." -ForegroundColor DarkGray
+    Write-Host "  -> Разрешена публикация после проверок." -ForegroundColor DarkGray
     Record "1. Role" "DEVELOPER"
 } else {
     Write-Host "  Role: CONSUMER (no .developer-marker)" -ForegroundColor Green
@@ -141,128 +138,23 @@ if (-not (Test-Path $verifyScript)) {
 }
 
 # ===================================================================
-# Step 5/6: Consumer-only feedback setup
+# Step 5: Consumer read-only guard
 # ===================================================================
 if (-not $isDeveloper) {
-    Section "5. Feedback config (.feedback-config.json)"
-    $configFile = Join-Path $ClaudeDir '.feedback-config.json'
-
-    if (Test-Path $configFile) {
-        try {
-            $cfg = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($cfg.github_repo -and ($cfg.token_encrypted -or $cfg.token)) {
-                $tokenForm = if ($cfg.token_encrypted) { 'token_encrypted (DPAPI)' } else { 'token (plaintext, legacy)' }
-                Write-Host "  [OK] .feedback-config.json present, repo=$($cfg.github_repo), $tokenForm" -ForegroundColor Green
-                if (-not $cfg.token_encrypted -and $cfg.token) {
-                    Write-Host "  [WARN] plain token (legacy) — запусти scripts/Set-FeedbackToken.ps1 для DPAPI-шифрования." -ForegroundColor Yellow
-                }
-                Record "5. Feedback config" "PASS"
-            } else {
-                Write-Host "  [FAIL] config missing github_repo or token/token_encrypted" -ForegroundColor Red
-                Record "5. Feedback config" "FAIL" "missing github_repo or token/token_encrypted"
-            }
-        } catch {
-            Write-Host "  [FAIL] .feedback-config.json invalid JSON: $_" -ForegroundColor Red
-            Record "5. Feedback config" "FAIL" "invalid JSON"
-        }
-    } else {
-        Write-Host "  Файл .feedback-config.json не найден." -ForegroundColor Yellow
-        Write-Host "  Нужен PAT (Personal Access Token) от Daniil'а для claude-base-feedback репо." -ForegroundColor Yellow
-        Write-Host ""
-        $createNow = Read-Host "  Создать сейчас интерактивно? (y/N)"
-        if ($createNow -match '^[yYдД]') {
-            Write-Host ""
-            Write-Host "  PAT обычно начинается с 'github_pat_' или 'ghp_'. Вставь его сюда (вид скрыт):" -ForegroundColor Cyan
-            $secureToken = Read-Host "  Token" -AsSecureString
-            $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
-            $token = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
-
-            if ($token -and $token.Length -gt 20) {
-                # Шифруем через DPAPI CurrentUser (как Set-FeedbackToken.ps1) — plaintext в файл НЕ пишем
-                $encrypted = ConvertFrom-SecureString -SecureString $secureToken
-                $cfg = @{
-                    github_repo     = "daniileliseev1337/claude-base-feedback"
-                    token_encrypted = $encrypted
-                } | ConvertTo-Json
-                [System.IO.File]::WriteAllText($configFile, $cfg, [System.Text.UTF8Encoding]::new($false))
-                Write-Host "  [OK] $configFile создан (token зашифрован через DPAPI)" -ForegroundColor Green
-                Record "5. Feedback config" "PASS" "created interactively (DPAPI)"
-            } else {
-                Write-Host "  [SKIP] token пустой/слишком короткий — пропускаем" -ForegroundColor Yellow
-                Record "5. Feedback config" "SKIP" "no token entered"
-            }
+    Section "5. Consumer read-only guard"
+    Push-Location $ClaudeDir
+    try {
+        & git remote set-url --push origin 'NO_PUSH_CONSUMER' 2>&1 | Out-Null
+        $pushUrl = (& git remote get-url --push origin 2>$null | Select-Object -First 1)
+        if ($pushUrl -eq 'NO_PUSH_CONSUMER') {
+            Write-Host "  [OK] origin push disabled" -ForegroundColor Green
+            Record "5. Consumer read-only" "PASS"
         } else {
-            Write-Host "  [SKIP] feedback push отключён до создания .feedback-config.json" -ForegroundColor DarkGray
-            Write-Host "         Получи PAT от Daniil'а по secure channel, потом перезапусти Updater." -ForegroundColor DarkGray
-            Record "5. Feedback config" "SKIP" "user declined"
+            Write-Host "  [FAIL] origin push URL remains writable" -ForegroundColor Red
+            Record "5. Consumer read-only" "FAIL"
         }
-    }
-
-    # ===================================================================
-    # Step 6: Smoke-test feedback push (только если config есть)
-    # ===================================================================
-    if (Test-Path $configFile) {
-        Section "6. Smoke-test feedback push"
-        $pendingDir = Join-Path $ClaudeDir 'feedback-pending'
-        New-Item -ItemType Directory -Path $pendingDir -Force | Out-Null
-        $smokeFile = Join-Path $pendingDir 'updater-smoke-test.md'
-
-        $smokeContent = @"
-## Тип
-test
-
-## Описание
-Smoke-test feedback pipeline от Updater 2.0 на $env:COMPUTERNAME ($env:USERNAME).
-Запущен автоматически из Update-ClaudeBase.ps1.
-
-## Контекст
-Проверка end-to-end: feedback-pending → staging → GitHub API push.
-Этот файл можно удалить из feedback репо после ревью.
-
-Timestamp: $(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz')
-"@
-        Set-Content -Path $smokeFile -Value $smokeContent -Encoding UTF8
-
-        # Snapshot лога ДО запуска collector — чтобы потом фильтровать только новые строки
-        # (без этого попадают исторические FAIL из прошлых запусков и smoke-test ложно FAIL'ит)
-        $logFile = Join-Path $ClaudeDir 'auto-sync.log'
-        $linesBefore = if (Test-Path $logFile) {
-            @(Get-Content $logFile -Encoding UTF8 -ErrorAction SilentlyContinue).Count
-        } else { 0 }
-
-        $collector = Join-Path $ClaudeDir 'scripts\feedback-collector.ps1'
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $collector 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
-
-        # Читаем только строки, добавленные ТЕКУЩИМ запуском collector
-        $newLines = @()
-        if (Test-Path $logFile) {
-            $allLines = @(Get-Content $logFile -Encoding UTF8 -ErrorAction SilentlyContinue)
-            if ($allLines.Count -gt $linesBefore) {
-                $newLines = $allLines[$linesBefore..($allLines.Count - 1)]
-            }
-        }
-        $hasPushed = $newLines | Where-Object { $_ -match 'remote push complete: \d+/\d+' }
-        $hasFailed = $newLines | Where-Object { $_ -match 'feedback-collector.*FAILED' }
-
-        if ($hasPushed -and -not $hasFailed) {
-            Write-Host "  [OK] Push в GitHub API сработал" -ForegroundColor Green
-            $hostname = $env:COMPUTERNAME
-            $userPrefix = ($env:USERNAME).ToLower()
-            Write-Host "       Branch: feedback/$hostname-$userPrefix" -ForegroundColor DarkGray
-            Write-Host "       URL: https://github.com/daniileliseev1337/claude-base-feedback/branches" -ForegroundColor DarkGray
-            Record "6. Smoke-test push" "PASS"
-        } else {
-            Write-Host "  [FAIL] Push в GitHub API не подтверждён" -ForegroundColor Red
-            Write-Host "       Новые строки лога (от текущего запуска collector):" -ForegroundColor DarkGray
-            if ($newLines.Count -eq 0) {
-                Write-Host "       (collector не дописал ничего в лог — возможно failed на старте)" -ForegroundColor DarkGray
-            } else {
-                $newLines | ForEach-Object { Write-Host "       $_" -ForegroundColor DarkGray }
-            }
-            $reason = if ($hasFailed) { "collector reported FAILED" } else { "no 'remote push complete' in new log lines" }
-            Record "6. Smoke-test push" "FAIL" $reason
-        }
+    } finally {
+        Pop-Location
     }
 }
 
@@ -303,8 +195,8 @@ if ($totalFail -eq 0) {
     if (-not $isDeveloper) {
         Write-Host "  Что дальше:" -ForegroundColor Cyan
         Write-Host "    - Работаешь в Claude Code как обычно." -ForegroundColor White
-        Write-Host "    - При SessionEnd auto-push hook соберёт feedback и отправит в твою ветку." -ForegroundColor White
-        Write-Host "    - Daniil заберёт feedback через pull-feedback.ps1 на DANIILPC." -ForegroundColor White
+        Write-Host "    - Обновления приходят через SessionStart или /sync-base." -ForegroundColor White
+        Write-Host "    - SessionEnd ничего не отправляет с этого ПК." -ForegroundColor White
     }
     exit 0
 } else {
