@@ -52,7 +52,7 @@ Interactive verification completed against the then-current worktrees:
 - one-way sync test: PASS in PowerShell 7 and 5.1;
 - auto-push staged-index safety, context governor, and tool-gate tests: PASS
   in PowerShell 7 and 5.1;
-- Foundation installer: 115/115 PASS in PowerShell 7 and 115/115 PASS in
+- Foundation installer: 116/116 PASS in PowerShell 7 and 116/116 PASS in
   Windows PowerShell 5.1;
 - schema validation and added/untracked secret-signature scans: PASS;
 - OpenCode adapter validates against the current official config schema;
