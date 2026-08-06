@@ -109,8 +109,38 @@ MCP-остатка. Полная гео-модель 3 состояний — [[
 - Поиск/добыча документа качества по артикулу (карточки, dorks) → `doc-finder`.
 - Извлечение текста/таблиц из уже скачанного PDF → `doc-extract`.
 
+## doctor — узнать о мёртвой ступени ДО боя
+```
+python ~/.claude/skills/web-access/tools/doctor.py [--json]
+```
+Реально пробует каждую ступень (не «команда существует»): egress + живость
+`--noproxy`, direct / noproxy / jina (с ключом и без), ru-слой, зарегистрированы ли
+MCP-ступени (exa/firecrawl/playwright), наличие ключей (значения не печатаются),
+yt-dlp. На каждую поломку — рецепт починки. Прогонять при «в сети ничего не берётся»
+и после смены сети/VPN — иначе мёртвая ступень читается как «сайта нет».
+
+## Ключи (per-machine, в git не уходят)
+`~/.claude/.local-state/secrets.env` (каталог gitignored), приоритет — за env:
+`JINA_API_KEY` · `FIRECRAWL_API_KEY` · `EXA_API_KEY` · `RU_PROXY`.
+**JINA_API_KEY важен:** без ключа `r.jina.ai` отдаёт 403 Cloudflare на антибот-целях
+(замер 2026-08-06: `ridan.ru` без ключа 403, с ключом 200 и 142 КБ) и режет частые
+запросы. С ключом ступень jina вытягивает RU-цели, которые раньше уходили в next_hint.
+
+## Субтитры видео по URL
+```
+python ~/.claude/skills/web-access/tools/yt_subs.py <URL> [--lang ru,en] [-o out.txt]
+python ~/.claude/skills/web-access/tools/yt_subs.py <URL> --list
+```
+yt-dlp: берёт готовые субтитры (ручные приоритетнее авто), само видео не качает.
+На VPN/датацентр-egress YouTube требует куки — тогда `--cookies-from-browser chrome`
+(браузер закрыт) или ручной экспорт `--cookies <файл>`; инструмент сам печатает
+причину и рецепт. Субтитров нет вовсе или нужны КАДРЫ → [[local-video-digest]]
+(локальный файл + faster-whisper).
+
 ## Файлы скилла
 - `tools/web_get.py` — транспорт (лестница ступеней + верификация).
+- `tools/doctor.py` — health-check ступеней и ключей.
+- `tools/yt_subs.py` — субтитры видео по URL (yt-dlp).
 - `tools/main_sites.md` — **реестр главных сайтов** (маршрутизатор ПОИСКА; наполняет владелец).
 - `tests/test_web_get.py` — юнит-тесты транспорта.
 
