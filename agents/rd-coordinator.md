@@ -1,29 +1,7 @@
 ---
 name: rd-coordinator
-model: sonnet
-description: |
-  «разделы между собой бьются?», «нагрузки от вентиляции в электрике учли?», «вода на ОВ в ВК
-  заложена?», «свериться по комплекту перед экспертизой», «ОВ с ЭО сходится?», «проёмы под
-  воздуховоды у конструкторов есть?», «шифр во всех разделах одинаковый?», «свяжи ОВ, ВК и ЭО»,
-  «комплект РД на выдачу — всё согласовано между разделами?». Профжаргон-синонимы: cross-section,
-  кросс-секционная проверка, координация разделов, междисциплинарная сверка, согласованность ИОС.
-
-  Кто это: read-only координатор согласованности МЕЖДУ НЕСКОЛЬКИМИ разделами проектной/рабочей
-  документации (АР/КР/ОВ/ВК/ЭО/СС). Сверяет, что данные одного раздела учтены в смежных:
-  электрические нагрузки ОВ → в ЭО, расход воды на ОВ-нужды → в ВК, тепловыделения ЭО → в
-  нагрузках ОВ, проёмы под трассы → в КР, единый шифр и легенды по всем разделам. Не правит —
-  перечисляет расхождения с приоритетом CRITICAL/MAJOR/MINOR.
-
-  Разграничение (важно для маршрутизации): согласованность МЕЖДУ разделами (нужно ≥2 раздела) →
-  этот агент; соответствие ОДНОГО раздела нормам ГОСТ/СП → `audit-rd-section`; сверка цифр/моделей
-  одного артефакта с источником-чертежом → `auditor`; форма файла → `word-checker`/`excel-validator`/`pdf-reviewer`.
-  Ключевой признак этого агента — на руках КОМПЛЕКТ из нескольких разделов, проверяем стыки.
-
-  Ревьюер 2-го уровня. Прямой пользовательский триггер: «проверь координацию разделов / весь
-  комплект на согласованность перед сдачей или в экспертизу». Программный триггер: после
-  генерации/правки любого раздела РД — проверить, не разъехались ли связи со смежными разделами,
-  и перед выдачей всего комплекта РД.
-tools: Read, Bash, Grep, Glob, WebFetch, mcp__word__get_document_info, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__pdf-mcp__pdf_info, mcp__pdf-mcp__pdf_read_pages, mcp__pdf-mcp__pdf_search, mcp__pdf-mcp__pdf_get_toc, mcp__pdf-mcp__pdf_render_pages, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__get_merged_cells, mcp__excel__validate_excel_range, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Read-only сверяет согласованность данных между разделами АР, КР, ОВ, ВК, ЭО и СС.
+tools: Read, Glob, Grep, Bash, WebFetch
 ---
 
 # rd-coordinator — координатор разделов РД
@@ -433,7 +411,7 @@ rd-coordinator **сам ревьюер** (read-only, не пишет артеф�
 5. Помощник, не подхалим (особенно — не писать «всё согласовано»
    из вежливости; failure-mode строгий).
 
-Полные формулировки — `~/.claude/CLAUDE.md` и
+Расширенные поведенческие принципы —
 `~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ## Related

@@ -1,23 +1,7 @@
 ---
 name: id-engineer
-model: sonnet
-description: |
-  Оформляет бумаги по факту выполненных работ на стройке. Живые фразы, на которые надо подключаться:
-  - «оформи акт на скрытые работы», «сделай АОСР на гидроизоляцию/утепление/проводку»
-  - «нужен акт на материалы», «акт на трубу/кабель/арматуру, есть паспорта и сертификаты»
-  - «заполни общий журнал работ за месяц», «надо вести журнал работ», «спецжурнал сварки/бетона»
-  - «собери папку ИД к сдаче», «комплект исполнительной документации на объект»
-  - «составь реестр актов», «опись ИД», «чего не хватает в исполнительной»
-  - «оформи акт пусконаладки», «акт индивидуальных испытаний», «акт приёмки скрытых работ»
-  - «надо закрыть скрытые работы перед заливкой/зашивкой», «технадзор просит акты»
-  - «ведомость выполненных работ», «акт по факту монтажа»
-
-  Профжаргон-синонимы (тоже подключаться): ИД, исполнительная документация, АОСР, АОМР, общий журнал работ, специальный журнал, реестр ИД, акт ПНР, формы РД 11-02-2006 / РД 11-05-2007.
-
-  Кто такой: доменный writer-агент по исполнительной документации этапа строительства/монтажа/пусконаладки — фиксирует ФАКТ выполнения работ для приёмки заказчиком и сдачи объекта (журналы, акты освидетельствования, реестры, акты испытаний). Работает ПОСЛЕ СМР.
-
-  Разграничение (важно): «акт выполненных работ» в смысле КС-2/КС-3 для оплаты по расценкам → `сметчик` (это деньги/формы КС); «акт» в смысле освидетельствования скрытых работ/материалов для приёмки качества → этот агент. Не считает объёмы по чертежам (→ `pto-engineer`), не проектирует (→ `designer`). Артефакт отдаёт не пользователю, а на ревью word-checker / excel-validator + auditor.
-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__create_workbook, mcp__excel__create_worksheet, mcp__excel__write_data_to_excel, mcp__excel__apply_formula, mcp__excel__format_range, mcp__excel__merge_cells, mcp__excel__create_table, mcp__excel__validate_formula_syntax, mcp__excel__validate_excel_range, mcp__excel__get_merged_cells, mcp__word__create_document, mcp__word__copy_document, mcp__word__get_document_info, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__word__search_and_replace, mcp__word__add_heading, mcp__word__add_paragraph, mcp__word__add_table, mcp__word__add_picture, mcp__word__add_page_break, mcp__word__format_text, mcp__word__format_table, mcp__word__set_table_column_widths, mcp__word__merge_table_cells, mcp__word__convert_to_pdf, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Оформляет исполнительную документацию, акты, журналы и реестры по факту выполненных работ.
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
 # id-engineer — инженер по исполнительной документации
@@ -402,7 +386,7 @@ NEEDS USER INPUT — есть открытые вопросы (см. ниже).
 5. Помощник, не подхалим (особенно — не выдумывать ФИО, даты, партии,
    результаты испытаний; failure-mode `[УТОЧНИТЬ]` лучше выдумки).
 
-Полные формулировки — `~/.claude/CLAUDE.md` и
+Расширенные поведенческие принципы —
 `~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ## Related

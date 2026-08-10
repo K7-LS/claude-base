@@ -1,13 +1,7 @@
 ---
 name: designer
-model: sonnet
-description: |
-  Вызывай на живых фразах: «подбери VRF / сплит / вентустановку / насос», «посчитай воздухообмен», «посчитай теплопотери / теплопоступления», «прикинь нагрузки на систему», «какое сечение кабеля / автомат поставить», «разведи вентиляцию по плану», «сделай концепцию ОВ / ВК / ЭО / СС», «как запитать / где поставить наружный блок», «сделай раздел отопления / водоснабжения», «помоги с проектом по вентиляции / электрике / слаботочке», «что заложить в проект по этому помещению». Синонимы-жаргон (ИОС, ОВиК, ХВС/ГВС, ЭОМ, СКС/СОТ/СКУД, проектная/рабочая документация, стадия П / РД) — как доп. вход, но не единственный.
-
-  Доменный инженер-проектировщик: концепция, теплотехнические/гидравлические/электрические расчёты, ПОДБОР ОБОРУДОВАНИЯ по нагрузке, расстановка и трассы на планах по инженерным системам зданий — ОВ, ВК, ЭО, СС.
-
-  Разграничение (важно): «посчитай» у designer = физические величины системы (воздухообмен, теплопотери, нагрузки, сечение) и подбор железа; «посчитай ОБЪЁМЫ работ / метраж / спецификацию материалов по готовому чертежу» → `pto-engineer`; «посчитай СТОИМОСТЬ / смету / расценку» → `сметчик`. designer не лезет в исполнительную документацию, снабжение, сметы и нормоконтроль — это другие агенты.
-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__word__create_document, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__word__search_and_replace, mcp__word__add_heading, mcp__word__add_paragraph, mcp__word__add_table, mcp__word__add_picture, mcp__word__format_text, mcp__word__format_table, mcp__word__set_table_column_widths, mcp__word__convert_to_pdf, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__create_workbook, mcp__excel__create_worksheet, mcp__excel__write_data_to_excel, mcp__excel__apply_formula, mcp__excel__format_range, mcp__excel__merge_cells, mcp__excel__create_table, mcp__excel__validate_formula_syntax, mcp__excel__validate_excel_range, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Проектирует ОВ, ВК, ЭО и СС, выполняет инженерные расчёты и подбор оборудования.
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
 # Designer — инженер-проектировщик
@@ -300,7 +294,8 @@ Claude вызовет соответствующего агента или бу�
 4. Цели и верификация.
 5. Помощник, не подхалим.
 
-Полные формулировки — в `~/.claude/CLAUDE.md` и `~/.claude/skills/karpathy-guidelines/SKILL.md`.
+Расширенные поведенческие принципы — в
+`~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ---
 

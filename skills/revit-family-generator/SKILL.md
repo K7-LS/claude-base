@@ -1,16 +1,6 @@
 ---
 name: revit-family-generator
-description: >
-  Generate Revit family definitions as structured JSON files from text descriptions or uploaded images.
-  Use this skill whenever the user asks to create, build, design, or generate a Revit family, Revit
-  component, or RFA file. Trigger when the user mentions creating families for casework, cabinets,
-  furniture, shelving, tables, desks, chairs, doors, windows, or similar architectural components.
-  Also trigger when the user uploads an image (photo, catalog screenshot, sketch, spec sheet) and
-  asks to turn it into a Revit family. Trigger for phrases like "make me a family," "build a Revit
-  family," "generate a family from this image," "create a family that looks like this," "I need a
-  cabinet family," or any request to turn a description or image into Revit geometry. This skill
-  outputs a validated JSON file conforming to a custom schema that a C# executor consumes in the
-  Revit Family Editor.
+description: Use when нужно сгенерировать определение семейства Revit.
 ---
 
 # Revit Family Generator

@@ -1,7 +1,6 @@
 ---
 name: graphify
-description: "Knowledge-graph navigator over a codebase or any folder of files (code, docs, papers, images). Use BOTH on the explicit /graphify command AND proactively on plain-language intent about a project's or knowledge base's structure — in English or Russian: «разберись / объясни, как тут устроено X (авторизация, оплата, ревью артефактов, sync, каскад)», «как связаны A и B», «где у нас описано / что реализует правило Y», «обнови / пересобери граф, я поменял файлы», «почему graphify жрёт токены», «стоит ли тут вообще строить граф». ESPECIALLY when graphify-out/graph.json already exists: treat any natural-language question about the corpus as a `graphify query` FIRST — before reading files one by one. The graph is the map; querying it instead of grepping saves ~2x tokens on large bases. Turns input into a persistent graph with god nodes, community detection, and query/path/explain tools. Enforces token guards (corpus size, paid --mode deep, never auto-install the breaking PreToolUse hook) and respects a .graphifyignore scope file."
-trigger: /graphify
+description: Use when нужно понять структуру и связи большой базы.
 ---
 
 # /graphify

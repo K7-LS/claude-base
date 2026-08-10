@@ -1,6 +1,6 @@
 ---
 name: yandex-disk-uploader
-description: Use this skill whenever you need to upload a file to <организация> Yandex Disk (project archive). Automatically routes to the correct subfolder based on file type — contracts go to 02_Договор/, invoices to 03_Финансы/, drawings to 05_Чертежи/, etc. Use after generating any artifact (DOCX, XLSX, PDF) that should be archived per-project.
+description: Use when готовый файл нужно загрузить на Яндекс Диск.
 ---
 
 # Yandex Disk Uploader Skill (<организация>)

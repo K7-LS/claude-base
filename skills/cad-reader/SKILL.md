@@ -1,6 +1,6 @@
 ---
 name: cad-reader
-description: Use this skill whenever you need to read CAD drawings (DWG, DXF). Extracts layers, text labels, room boundaries, equipment blocks, and stamp data (project name, drawing number, scale). DWG is auto-converted to DXF via ODA File Converter. <организация> specifically: works with floor plans for low-current systems (СКС, СКУД, CCTV) — separate layer per system. Does NOT support Revit/IFC/Compass-3D — those need separate skills. Триггеры (RU): «прочитай чертёж / DWG / DXF», «какие слои в dwg», «состав систем по чертежу», «извлеки штамп / слои», «посчитай помещения по слою».
+description: Use when нужно прочитать геометрию, слои или блоки DWG/DXF.
 ---
 
 # CAD Reader Skill (<организация>)

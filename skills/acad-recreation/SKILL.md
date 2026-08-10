@@ -1,16 +1,6 @@
 ---
 name: acad-recreation
-description: |
-  Воссоздание чертежей (в первую очередь ОВ-проектов квартир) из PDF в DWG через
-  autocad-mcp на ЖИВОМ AutoCAD: подложка (PDFIMPORT+калибровка+чистка), динамические
-  блоки фирмы, слои/листы/штампы, аннотации. Несёт наш усиленный toolkit поверх
-  сервера puran-water + заимствования из harvest (LISP-toolkit, multi-view PDF, cp1251-патч).
-
-  Триггеры:
-  - "воссоздать чертёж", "PDF в DWG", "recreation", "пересоздать проект из PDF"
-  - "ОВ-проект квартиры", "разводка вентиляции в AutoCAD", "динамический блок воздуховод"
-  - "autocad-mcp", "execute_lisp", "PDFIMPORT", "подложка чертежа"
-  - "вставить динблок с параметрами", "dyn-props", "Lee Mac"
+description: Use when нужно воссоздать инженерный DWG по PDF, скану или образцу.
 ---
 
 # acad-recreation

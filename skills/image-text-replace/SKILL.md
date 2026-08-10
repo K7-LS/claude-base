@@ -1,33 +1,6 @@
 ---
 name: image-text-replace
-description: |
-  Скилл для сканированных изображений (JPEG/PNG/scan-PDF). Две связанные функции:
-
-  **1. OCR с координатами и структурой (primary use):**
-  EasyOCR (RU+EN) + smart_cap_height_detect + find_neighbor_cell_reference
-  + bbox normalisation. Точное распознавание токенов с координатами,
-  отлично для извлечения значений из ячеек таблиц, поиска label→value
-  пар, чтения форм. Сильнее markitdown для сканов.
-
-  **2. Замена/вставка текста (secondary use):**
-  OCR → mask → LaMa inpaint → Times Bold render → SD img2img strength=0.10
-  полировка. v3.0 — production-ready после 16 итераций (КП <организация> АХП case).
-
-  Триггеры (OCR, primary):
-  - "разбери скан", "что в этом скане", "извлеки данные из скана"
-  - "OCR скана", "распознать сканированный документ"
-  - "найди в скане X" (например, сумму, шифр, дату)
-  - "что написано на скане", "прочитай scan-PDF"
-  - "значение в ячейке скана", "label → value скан"
-  - после `doc-extract` определил, что PDF — скан (нет текст-слоя) и нужен
-    OCR со структурой (bbox, label→value)
-
-  Триггеры (text replace, secondary):
-  - "замени текст на картинке/скане"
-  - "исправь шифр на скане", "затри текст на изображении"
-  - "вставь текст в ячейку скана", "добавь % в строку"
-  - "увеличь сумму в скане на N%", "поменяй цифру в скане"
-tools: Read, Write, Edit, Bash, Glob, Grep
+description: Use when в скане или изображении нужно заменить текст.
 ---
 
 # image-text-replace v3.1

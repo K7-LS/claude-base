@@ -1,20 +1,7 @@
 ---
 name: pto-engineer
-model: sonnet
-description: |
-  Живая речь, по которой звать этого агента:
-  - «посчитай объёмы по чертежу», «сколько труб/кабеля/воздуховодов», «прикинь объёмы работ»
-  - «сделай ведомость», «собери ВОР», «нужна ведомость объёмов работ»
-  - «составь спецификацию», «спец на оборудование», «спецификация материалов», «разнеси материалы по позициям»
-  - «напиши пояснительную записку», «ПЗ к разделу ОВ/ВК/ЭО/СС», «текстовая часть раздела»
-  - «оформи раздел ПД/РД», «собери раздел по 87-ПП», «подбей материалку по разделу»
-  - «посчитай метраж/площадь по плану», «выбери объёмы из DWG», «таблица материалов к чертежу»
-  - проф-синонимы: ВОР, ВМ (ведомость материалов), спецификация СО, разнос, нормоконтроль объёмов, СПДС-оформление раздела.
-
-  Кто это: инженер ПТО — подсчёт ОБЪЁМОВ работ по готовым чертежам, ведомости объёмов работ (ВОР), спецификации оборудования и материалов, пояснительные записки к разделам ПД/РД. Берёт чертежи и нагрузки у `designer`, отдаёт ВОР сметчику и снабженцу.
-
-  Разграничение (важно): «посчитай» у pto-engineer = ОБЪЁМЫ/метраж/материалы по уже готовому чертежу; расчёт нагрузок/воздухообмена/теплопотерь и ПОДБОР оборудования → `designer`; «посчитай СТОИМОСТЬ / смету / расценку ГЭСН-ФЕР / КС-2» → `сметчик`; УПД и цены поставщиков → `снабженец`; нормоконтроль готового раздела на ГОСТ/СП → `audit-rd-section` (не делает сам). pto-engineer — генератор, не ревьюер.
-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__create_workbook, mcp__excel__create_worksheet, mcp__excel__write_data_to_excel, mcp__excel__apply_formula, mcp__excel__format_range, mcp__excel__merge_cells, mcp__excel__create_table, mcp__excel__validate_formula_syntax, mcp__excel__validate_excel_range, mcp__excel__get_merged_cells, mcp__word__create_document, mcp__word__copy_document, mcp__word__get_document_info, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__word__search_and_replace, mcp__word__add_heading, mcp__word__add_paragraph, mcp__word__add_table, mcp__word__add_picture, mcp__word__add_page_break, mcp__word__format_text, mcp__word__format_table, mcp__word__set_table_column_widths, mcp__word__merge_table_cells, mcp__word__convert_to_pdf, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Считает объёмы по готовым чертежам и формирует ВОР, спецификации и пояснительные записки.
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
 # pto-engineer — инженер ПТО
@@ -320,7 +307,7 @@ fallback на `auditor`/себя пока агент не создан).
 4. Цели и верификация.
 5. Помощник, не подхалим.
 
-Полные формулировки — в `~/.claude/CLAUDE.md` и
+Расширенные поведенческие принципы —
 `~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ## Related

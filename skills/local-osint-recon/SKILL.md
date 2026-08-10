@@ -1,16 +1,6 @@
 ---
 name: local-osint-recon
-description: >
-  Локальный OSINT/recon через установленный Kali WSL (дистрибутив `kali`, 142 инструмента
-  в /usr/local/bin + 16 go в /root/go/bin + apt). Единый диспетчер tools/recon.py оборачивает
-  вызовы `wsl -d kali`, знает пути/root-нюанс/гейт авторизации, парсит вывод. Пассивная
-  разведка (due-diligence контрагента, метаданные документов) — без ограничений; active/offensive
-  (nmap/gobuster/sqlmap/hydra/msfconsole/Modlishka…) — по решению пользователя, но с обязательным
-  предупреждением и подтверждением цели (--authorized). Локальный скилл, в shared-базу не пушится.
-  Триггеры: «пробей контрагента/домен/почту», «osint по <домену>», «поддомены <домена>»,
-  «метаданные скана/pdf/сертификата», «проверь фейк-домены под <бренд>», «due-diligence поставщика»,
-  «recon по <цели>», «просканируй <хост>» (свой/авторизованный), «запусти <инструмент kali>»,
-  «что засветилось по почте <email>», «аккаунты по нику <ник>».
+description: Use when authorized local OSINT or recon must run through an existing Kali WSL.
 ---
 
 # local-osint-recon

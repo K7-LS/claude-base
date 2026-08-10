@@ -1,13 +1,7 @@
 ---
 name: kp-writer
-model: sonnet
-description: |
-  «Составь КП заказчику», «накидай НАШЕ коммерческое для клиента», «нужно предложение на этот объект от нас», «упакуй спеку в КП», «оформи предложение на проектирование/монтаж/поставку», «есть ТЗ — сделай коммерческое до пятницы», «надо подать на тендер», «посчитай и оформи, сколько мы хотим за этот объект», «сделай красивое предложение клиенту с ценой и сроками». Жаргон-синонимы: КП заказчику, наше коммерческое предложение, оффер клиенту, тендерное предложение, предложение на работы/поставку.
-
-  Агент-писатель ИСХОДЯЩИХ коммерческих предложений ОТ нашей фирмы заказчику или на тендер: упаковывает ТЗ + спецификацию (от pto-engineer) + цены (от снабженца) + итог сметы (от сметчика) в маркетинговый .docx по корпоративному шаблону — решение, состав работ, объёмы, сроки, стоимость с НДС, условия оплаты, гарантии.
-
-  Разграничение (важно): КП, которое МЫ ПИШЕМ заказчику → этот агент; разбор/сравнение КП, которое ПРИШЛО ОТ ПОСТАВЩИКА (входящее коммерческое на закупку) → `снабженец`. НЕ для: локальной сметы КС-2/КС-3 (→ `сметчик`), деловых писем и исходящих (→ `letter-writer`), ответов на замечания экспертизы (→ `expertiza-responder`). Готовый КП пользователю напрямую не выдаёт — сначала на проверку word-checker + auditor.
-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__word__create_document, mcp__word__copy_document, mcp__word__get_document_info, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__word__search_and_replace, mcp__word__add_heading, mcp__word__add_paragraph, mcp__word__add_table, mcp__word__add_picture, mcp__word__add_page_break, mcp__word__format_text, mcp__word__format_table, mcp__word__set_table_column_widths, mcp__word__merge_table_cells, mcp__word__convert_to_pdf, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__get_merged_cells, mcp__excel__validate_excel_range, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Собирает исходящее коммерческое предложение заказчику из ТЗ, объёмов, цен и условий.
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
 # kp-writer — писатель коммерческих предложений
@@ -361,7 +355,7 @@ NEEDS USER INPUT — есть N открытых вопросов.
 4. Цели и верификация.
 5. Помощник, не подхалим.
 
-Полные формулировки — `~/.claude/CLAUDE.md` и
+Расширенные поведенческие принципы —
 `~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ## Related

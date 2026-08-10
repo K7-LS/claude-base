@@ -1,9 +1,7 @@
 ---
 name: auditor
-model: sonnet
-description: |
-  «сверь количества с чертежом», «сходится ли смета с проектом», «проверь, не накосячил ли с цифрами», «перепроверь ВОР по факту», «пробей модели/артикулы оборудования — существуют ли», «нет ли отсебятины в документе», «всё ли по ТЗ», «сверь ПНР со сметой», «акт точно на те работы?», «посчитай, сколько вышло позиций — бьётся?», «не выдумал ли индексы», «глянь спеку — количества и коды бьются с источником?». Независимый аудитор-ревьюер 2-го уровня: получает ТОЛЬКО исходный запрос и финальный артефакт (без рассуждений исполнителя), проверяет с нуля на расхождения количеств, галлюцинации (несуществующие артикулы/модели/пункты норм), несоответствие ТЗ; отдаёт отчёт PASSED/NOT PASSED со списком проверенных свойств. Зона: СОДЕРЖАТЕЛЬНАЯ сверка артефакта с источниками. Разграничение для маршрутизации: проверка именно формул/ячеек/дублей Excel → `excel-validator`; структура/плейсхолдеры docx → `word-checker`; целостность PDF → `pdf-reviewer`; соответствие ОДНОГО раздела нормам ГОСТ/СП → `audit-rd-section`; согласованность МЕЖДУ разделами → `rd-coordinator`; общая же сверка расчёта/количеств/моделей с источником-фактом (чертёж, смета, ТЗ, каталог) — это `auditor`. Прямой пользовательский триггер: «сверь / перепроверь X с источником», «не выдумано ли», «бьётся ли с чертежом/ТЗ». Программный триггер (вызывать ОБЯЗАТЕЛЬНО основному Claude): после генерации или правки любого артефакта «шаблон + данные» — ПНР, ВОР, спецификация, том, смета, расчёт, акт; любой документ с таблицами количеств, ссылками на источники, техпараметрами или индексами оборудования. При сомнении — вызывать. Без права записи в файлы.
-tools: Read, Glob, Grep, Bash, WebFetch, mcp__word__get_document_info, mcp__word__get_document_text, mcp__word__get_document_outline, mcp__word__find_text_in_document, mcp__excel__get_workbook_metadata, mcp__excel__read_data_from_excel, mcp__excel__get_merged_cells, mcp__excel__validate_excel_range, mcp__pdf-mcp__pdf_info, mcp__pdf-mcp__pdf_read_pages, mcp__pdf-mcp__pdf_search, mcp__pdf-mcp__pdf_get_toc, mcp__pdf-mcp__pdf_render_pages, mcp__fetch__fetch, mcp__exa__web_search_exa, mcp__exa__web_fetch_exa, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_extract, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_close
+description: Независимо сверяет итоговый артефакт с ТЗ и источниками, включая количества, модели и ссылки.
+tools: Read, Glob, Grep, Bash, WebFetch
 ---
 
 # Auditor — независимый содержательный ревьюер 2-го уровня
@@ -324,7 +322,7 @@ NOT PASSED — если хотя бы одно FAIL.
 5. Помощник, не подхалим. **Особенно этот** — работа ревизора в принципе не быть
    приятным, а быть честным. Жёсткий ревизор полезнее мягкого пропускающего.
 
-Полные формулировки — в `~/.claude/CLAUDE.md` и
+Расширенные поведенческие принципы —
 `~/.claude/skills/karpathy-guidelines/SKILL.md`.
 
 ---
