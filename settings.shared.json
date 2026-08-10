@@ -54,6 +54,12 @@
           },
           {
             "type": "command",
+            "command": "& \"$HOME\\.claude\\base\\runtime\\hooks\\check-release.ps1\"",
+            "shell": "powershell",
+            "timeout": 40
+          },
+          {
+            "type": "command",
             "command": "& \"$HOME\\.claude\\scripts\\codex-drift-check.ps1\"",
             "shell": "powershell",
             "timeout": 30
@@ -86,6 +92,12 @@
             "command": "& \"$HOME\\.claude\\scripts\\auto-pull.ps1\"",
             "shell": "powershell",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "& \"$HOME\\.claude\\base\\runtime\\hooks\\check-release.ps1\"",
+            "shell": "powershell",
+            "timeout": 40
           },
           {
             "type": "command",
