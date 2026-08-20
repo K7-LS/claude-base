@@ -645,7 +645,7 @@ Expected: `Х..Y main -> main` без ошибок, exit 0.
 Run:
 ```powershell
 $env:HTTPS_PROXY = ""
-$resp = Invoke-RestMethod -Uri "https://api.github.com/repos/daniileliseev1337/claude-base/contents/library" -Headers @{Accept='application/vnd.github+json'}
+$resp = Invoke-RestMethod -Uri "https://api.github.com/repos/K7-LS/claude-base/contents/library" -Headers @{Accept='application/vnd.github+json'}
 $resp | Select-Object name, type | Format-Table
 ```
 Expected: список с `README.md`, `INDEX.md`, `categories` (директория).

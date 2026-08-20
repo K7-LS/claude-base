@@ -59,7 +59,7 @@ if (Test-Path $ConfigFile) {
 
 # 2. Спросить github_repo если его нет
 if (-not $cfg.github_repo) {
-    $defaultRepo = "daniileliseev1337/claude-base-feedback"
+    $defaultRepo = "K7-LS/claude-base-feedback"
     $repo = Read-Host "GitHub repo для feedback (default: $defaultRepo)"
     if (-not $repo) { $repo = $defaultRepo }
     $cfg | Add-Member -NotePropertyName 'github_repo' -NotePropertyValue $repo -Force

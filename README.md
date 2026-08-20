@@ -2,7 +2,7 @@
 
 Общая база Claude Code: глобальные правила (`CLAUDE.md`), 15 доменных и ревьюер-агентов, 16+ методологических скиллов, эмпирическая память, отчёты сессий, harvest внешних инструментов, именованные цепочки (chains).
 
-**Этот репо клонируется в `~/.claude/` каждого ПК пользователя через [claude-lite-instaler](https://github.com/daniileliseev1337/claude-lite-instaler).** Все ПК синхронизируют изменения через git с **hub-and-spoke** архитектурой (developer = DANIILPC пишет в `main`, consumer-ПК сотрудников читают + шлют feedback в отдельный приватный репо `claude-base-feedback`).
+**Этот репо клонируется в `~/.claude/` каждого ПК пользователя через [claude-lite-instaler](https://github.com/K7-LS/claude-lite-instaler).** Все ПК синхронизируют изменения через git с **hub-and-spoke** архитектурой (developer = DANIILPC пишет в `main`, consumer-ПК сотрудников читают + шлют feedback в отдельный приватный репо `claude-base-feedback`).
 
 ## Что внутри
 
@@ -52,10 +52,10 @@
 
 ## Установка
 
-Через [claude-lite-instaler](https://github.com/daniileliseev1337/claude-lite-instaler):
+Через [claude-lite-instaler](https://github.com/K7-LS/claude-lite-instaler):
 
 ```powershell
-git clone https://github.com/daniileliseev1337/claude-lite-instaler
+git clone https://github.com/K7-LS/claude-lite-instaler
 cd claude-lite-instaler
 .\Install.ps1
 ```

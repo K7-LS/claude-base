@@ -182,7 +182,7 @@ if (-not $isDeveloper) {
                 # Шифруем через DPAPI CurrentUser (как Set-FeedbackToken.ps1) — plaintext в файл НЕ пишем
                 $encrypted = ConvertFrom-SecureString -SecureString $secureToken
                 $cfg = @{
-                    github_repo     = "daniileliseev1337/claude-base-feedback"
+                    github_repo     = "K7-LS/claude-base-feedback"
                     token_encrypted = $encrypted
                 } | ConvertTo-Json
                 [System.IO.File]::WriteAllText($configFile, $cfg, [System.Text.UTF8Encoding]::new($false))
@@ -250,7 +250,7 @@ Timestamp: $(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz')
             $hostname = $env:COMPUTERNAME
             $userPrefix = ($env:USERNAME).ToLower()
             Write-Host "       Branch: feedback/$hostname-$userPrefix" -ForegroundColor DarkGray
-            Write-Host "       URL: https://github.com/daniileliseev1337/claude-base-feedback/branches" -ForegroundColor DarkGray
+            Write-Host "       URL: https://github.com/K7-LS/claude-base-feedback/branches" -ForegroundColor DarkGray
             Record "6. Smoke-test push" "PASS"
         } else {
             Write-Host "  [FAIL] Push в GitHub API не подтверждён" -ForegroundColor Red
