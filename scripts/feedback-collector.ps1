@@ -150,7 +150,7 @@ basename: $($f.BaseName)
 #
 # Конфиг ~/.claude/.feedback-config.json (gitignored, per-PC) формат:
 # {
-#   "github_repo": "daniileliseev1337/claude-base-feedback",
+#   "github_repo": "K7-LS/claude-base-feedback",
 #   "token": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxx",  // PAT с repo scope
 #   "branch": "feedback/${hostname}-${userprefix}"  // optional; default below
 # }

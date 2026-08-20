@@ -16,7 +16,7 @@ Workflow:
 Конфиг — `~/.claude/.feedback-config.json` (тот же что у consumers, но
 с правом read+admin на feedback-репо):
 {
-  "github_repo": "daniileliseev1337/claude-base-feedback",
+  "github_repo": "K7-LS/claude-base-feedback",
   "token": "ghp_..."
 }
 
