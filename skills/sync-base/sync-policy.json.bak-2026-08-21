@@ -17,7 +17,8 @@
   "evidence": {
     "style": "verdicts",
     "required_verdicts": [
-      "FULL_RELEASE_CLAUDE"
+      "FULL_RELEASE_CLAUDE",
+      "RELEASE_INTEGRITY"
     ],
     "program_release": "2/3"
   }
