@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bootstrap.py — разворот или подключение единого ядра памяти проекта.
+"""bootstrap.py — разворот нейтрального ядра памяти проекта в <Проект>/LLM/.
 
 Часть скилла project-memory. Идемпотентен: существующие файлы НЕ перезаписывает
 (перезапись — только явный --force). Ссылки в шаблонах — относительные.
@@ -14,23 +14,18 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from core_layout import CORE_RULES, CoreConflict, select_core
-
 SKILL_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES = SKILL_DIR / "templates" / "core"
 
 JOURNAL_NAME = "ЖУРНАЛ СЕССИЙ.md"
-DEFAULT_CORE = "Claude"
 
 # (имя шаблона, относительный путь результата от корня проекта)
-INTERNAL_FILES = [
-    ("CLAUDE.md.tmpl", Path("Claude") / "CLAUDE.md"),
-    ("README.md.tmpl", Path("Claude") / "README.md"),
-    ("ЖУРНАЛ СЕССИЙ.md.tmpl", Path("Claude") / JOURNAL_NAME),
-    ("STATUS.md.tmpl", Path("Claude") / "STATUS.md"),
-    ("КОНТЕКСТ.md.tmpl", Path("Claude") / "КОНТЕКСТ.md"),
-]
-ROOT_FILES = [
+CORE_FILES = [
+    ("AGENTS.md.tmpl", Path("LLM") / "AGENTS.md"),
+    ("README.md.tmpl", Path("LLM") / "README.md"),
+    ("ЖУРНАЛ СЕССИЙ.md.tmpl", Path("LLM") / JOURNAL_NAME),
+    ("STATUS.md.tmpl", Path("LLM") / "STATUS.md"),
+    ("КОНТЕКСТ.md.tmpl", Path("LLM") / "КОНТЕКСТ.md"),
     ("root-AGENTS.md.tmpl", Path("AGENTS.md")),
     ("root-CLAUDE.md.tmpl", Path("CLAUDE.md")),
 ]
@@ -66,7 +61,7 @@ def domain_to_agent(domain: str) -> str:
 
 
 def render(template_path: Path, project: str, today: str, host: str,
-           role: str = "", domain: str = "", core_name: str = DEFAULT_CORE) -> str:
+           role: str = "", domain: str = "") -> str:
     text = template_path.read_text(encoding="utf-8")
     agent = domain_to_agent(domain)
     return (text.replace("[ПРОЕКТ]", project)
@@ -74,15 +69,11 @@ def render(template_path: Path, project: str, today: str, host: str,
                 .replace("[УСТРОЙСТВО]", host)
                 .replace("[РОЛЬ]", role or "_заполнить роль_")
                 .replace("[ДОМЕН]", domain or "_заполнить домен_")
-                .replace("[АГЕНТ]", agent or "_выбрать из 16 агентов_")
-                .replace("[ЯДРО]", core_name)
-                .replace("[ПРАВИЛА]", CORE_RULES[core_name]))
+                .replace("[АГЕНТ]", agent or "_выбрать из 16 агентов_"))
 
 
-def _forced(rel_out: Path, force: list[str], files) -> bool:
-    """--force матчит осознанный путь со слэшем (Claude/CLAUDE.md, ./CLAUDE.md)
-    либо голое имя, если оно уникально среди CORE_FILES. Голое CLAUDE.md
-    неоднозначно (корневой указатель и Claude/CLAUDE.md) — не матчится."""
+def _forced(rel_out: Path, force: list[str]) -> bool:
+    """--force матчит точный осознанный относительный путь."""
     rel_posix = rel_out.as_posix()
     for f in force:
         fp = f.replace("\\", "/")
@@ -92,34 +83,30 @@ def _forced(rel_out: Path, force: list[str], files) -> bool:
             if fp == rel_posix:
                 return True
         elif rel_out.name == fp:
-            if sum(1 for _, r in files if r.name == fp) == 1:
+            if sum(1 for _, r in CORE_FILES if r.name == fp) == 1:
                 return True
     return False
 
 
 def bootstrap(project: str, target: Path, profile: str = "core",
               force: list[str] | None = None,
-              role: str = "", domain: str = "",
-              core_name: str | None = None) -> list[tuple[str, str]]:
+              role: str = "", domain: str = "") -> list[tuple[str, str]]:
     """Разворачивает ядро. Возвращает [("+"|"=", относительный_путь_posix)]."""
     if profile != "core":
         raise SystemExit(
             f"профиль '{profile}' не поддерживается в v1 (только core; "
             f"templates/profiles/ — точка расширения)")
     force = force or []
-    core_name = core_name or select_core(target) or DEFAULT_CORE
-    files = ROOT_FILES + (INTERNAL_FILES if core_name == DEFAULT_CORE else [])
     today = date.today().isoformat()
     host = socket.gethostname().upper()
     report: list[tuple[str, str]] = []
-    for tmpl_name, rel_out in files:
+    for tmpl_name, rel_out in CORE_FILES:
         out = Path(target) / rel_out
-        if out.exists() and not _forced(rel_out, force, files):
+        if out.exists() and not _forced(rel_out, force):
             report.append(("=", rel_out.as_posix()))
             continue
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render(TEMPLATES / tmpl_name, project, today, host,
-                              role, domain, core_name),
+        out.write_text(render(TEMPLATES / tmpl_name, project, today, host, role, domain),
                        encoding="utf-8", newline="\n")
         report.append(("+", rel_out.as_posix()))
     return report
@@ -136,8 +123,8 @@ def main(argv=None) -> int:
                    help="зарезервировано (v1: только core)")
     p.add_argument("--force", action="append", default=[], metavar="ФАЙЛ",
                    help="перезаписать существующий файл (можно повторять); "
-                        "для CLAUDE.md указывать путь: ./CLAUDE.md (корневой) "
-                        "или Claude/CLAUDE.md")
+                        "для правил указывать точный путь: ./AGENTS.md, "
+                        "./CLAUDE.md или LLM/AGENTS.md")
     p.add_argument("--role", default="", help="роль в КОНТЕКСТ.md (напр. 'инженер ОВ')")
     p.add_argument("--domain", default="",
                    help="домен проекта → ведущий агент (ОВ/ВК/ЭО/СС/ИД/ВОР/смета/снабжение/Revit...)")
@@ -146,15 +133,8 @@ def main(argv=None) -> int:
     if not target.is_dir():
         print(f"целевая папка не существует: {target}", file=sys.stderr)
         return 1
-    try:
-        core_name = select_core(target) or DEFAULT_CORE
-    except CoreConflict as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
     report = bootstrap(args.project, target, args.profile, args.force,
-                       args.role, args.domain, core_name)
-    action = "переиспользовано" if core_name != DEFAULT_CORE else "активно"
-    print(f"Ядро проекта: {core_name}/ ({action}); второе ядро не создаётся.")
+                       args.role, args.domain)
     for mark, rel in report:
         label = "создан" if mark == "+" else "уже есть, не тронут"
         print(f"{mark} {rel}  ({label})")

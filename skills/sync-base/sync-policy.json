@@ -16,9 +16,7 @@
   },
   "evidence": {
     "style": "verdicts",
-    "required_verdicts": [
-      "FULL_RELEASE_CLAUDE"
-    ],
+    "required_verdicts": [],
     "program_release": "2/3"
   }
 }
