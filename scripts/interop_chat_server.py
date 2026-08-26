@@ -126,6 +126,9 @@ PAGE = """<!doctype html>
   .tg .gist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
   .tg .body { border-top: 1px solid var(--line); padding: 10px 12px; white-space: pre-wrap; overflow-wrap: break-word; color: var(--ink); }
   .tg .body b { color: var(--dim); font-weight: 600; }
+  .entry .tg.err { border-color: #7f2d2d; background: #221417; width: min(88%, 620px); margin: 0 auto;
+    font-family: var(--mono); font-size: 12px; }
+  .entry .tg.err .body { border-top: none; color: #f0a8a8; }
 
   .empty { text-align: center; color: var(--dim); font-size: 14px; padding: 90px 20px; position: relative; z-index: 1; }
   .empty code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
@@ -185,6 +188,13 @@ function parse(text) {
   const entries = [];
   const blocks = text.split(/^## /m).filter(b => b.trim());
   for (const b of blocks) {
+    const fail = b.match(/^(\\d{4}-\\d{2}-\\d{2}) (\\d{2}:\\d{2}:\\d{2}) — ⚠ ОШИБКА МОСТА, (Claude → Codex|Codex → Claude) \\((.*?)\\)\\s*\\n([\\s\\S]*)$/);
+    if (fail) {
+      entries.push({ day: fail[1], time: fail[2], tool: fail[4],
+        from: fail[3].startsWith("Claude") ? "claude" : "codex",
+        isError: true, q: fail[5].trim(), a: "" });
+      continue;
+    }
     const m = b.match(/^(\\d{4}-\\d{2}-\\d{2}) (\\d{2}:\\d{2}:\\d{2}) — (Claude → Codex|Codex → Claude) \\((.*?)\\)\\s*\\n([\\s\\S]*)$/);
     if (!m) continue;
     const [, day, time, dir, tool] = m;
@@ -226,7 +236,12 @@ function renderEntry(e, fresh) {
   const dirLabel = e.from === "claude"
     ? side("CLAUDE", "dir-claude", e.mInit) + " → " + side("CODEX", "dir-codex", e.mResp)
     : side("CODEX", "dir-codex", e.mInit) + " → " + side("CLAUDE", "dir-claude", e.mResp);
-  if (e.isTool) {
+  if (e.isError) {
+    div.className = "entry tool from-" + e.from + (fresh ? " fresh" : "");
+    div.innerHTML =
+      '<div class="meta">' + dirLabel + " · " + esc(e.time) + "</div>" +
+      '<div class="tg err"><div class="body">⚠ ОШИБКА МОСТА (' + esc(e.tool) + ')\\n' + esc(e.q) + "</div></div>";
+  } else if (e.isTool) {
     div.className = "entry tool from-" + e.from + (fresh ? " fresh" : "");
     const gist = e.q.replace(/\\s+/g, " ").slice(0, 90);
     div.innerHTML =

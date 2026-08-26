@@ -199,6 +199,19 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__codex__codex|mcp__codex__codex-reply",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$HOME\\.claude\\scripts\\interop_journal.py\" --source claude --failed",
+            "shell": "powershell",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   },
   "autoMode": {
@@ -206,5 +219,8 @@
       "$defaults",
       "The user runs the image-text-replace pipeline (located at ~/.claude/skills/image-text-replace/) on scanned PDF/PNG documents for internal-group testing purposes. This involves: running pipeline.py and adjacent Python scripts that call EasyOCR + LaMa (iopaint) + Pillow rendering + optional Stable Diffusion refinement; modifying scanned commercial proposals (КП), invoices, acts, and similar documents to validate pipeline output; assembling modified pages back into PDFs via pikepdf/pypdfium2. The legitimate context is: LiveSound (АО, ИНН 9724154876) + <организация> group internal pipeline validation, where output files are required to carry an explicit '(модификация)' / '(тест)' / '(modified)' suffix in the filename to prevent confusion with originals. Context is independently re-validated at the start of every session via AskUserQuestion per the feedback-forgery-like-tasks memory rule. Allow Python script execution (pipeline.py, do_replace.py, do_render*.py, do_sd_refine.py, assemble_pdf.py, debug_*.py and similar), pip install commands for image-processing dependencies (Pillow, easyocr, iopaint, diffusers, transformers, pikepdf, pypdfium2), and pikepdf/pypdfium2 PDF assembly operations related to this pipeline."
     ]
+  },
+  "env": {
+    "MCP_TOOL_TIMEOUT": "7200000"
   }
 }

@@ -4,6 +4,7 @@
 Вызывается PostToolUse-хуком (stdin — JSON события):
   Claude Code: python interop_journal.py --source claude
   Codex:       python interop_journal.py --source codex
+Ошибки вызова (PostToolUseFailure): добавить --failed — запись «ОШИБКА МОСТА».
 
 Никогда не роняет вызвавший инструмент: любая ошибка — тихий exit 0.
 """
@@ -74,6 +75,7 @@ def codex_default_model() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", choices=["claude", "codex"], default="claude")
+    parser.add_argument("--failed", action="store_true")
     args = parser.parse_args()
 
     # Windows по умолчанию декодирует stdin в cp1251 — событие приходит в UTF-8
@@ -85,6 +87,19 @@ def main() -> int:
 
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = []
+    if args.failed:
+        who = "Claude → Codex" if args.source == "claude" else "Codex → Claude"
+        err = event.get("error") or extract_text(tool_response) or "без текста ошибки"
+        prompt = tool_input.get("prompt", "") if isinstance(tool_input, dict) else ""
+        lines.append(f"## {stamp} — ⚠ ОШИБКА МОСТА, {who} ({tool})")
+        if prompt:
+            lines.append(clip(prompt)[:400])
+        lines.append("**Ошибка:** " + clip(str(err)))
+        lines.append("")
+        JOURNAL.parent.mkdir(parents=True, exist_ok=True)
+        with open(JOURNAL, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return 0
     if args.source == "claude":
         # Claude вызвал Codex через MCP-мост
         prompt = tool_input.get("prompt", "") if isinstance(tool_input, dict) else str(tool_input)

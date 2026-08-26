@@ -282,6 +282,10 @@ try {
         # Warn-ярус (имена объектов — разрешены по делу) → только строка в лог, пуш идёт.
         # Словарь НЕ в git (.local-state гитигнорен — сам словарь содержит маркеры).
         $stopFile = Join-Path $claudeDir '.local-state\anonymize-stoplist.txt'
+        if (-not (Test-Path $stopFile)) {
+            # Гард без словаря молча выключен — этого больше не допускаем (ревизия 2026-08-26)
+            Write-SyncLog "anonymize: stoplist MISSING -- PII-guard OFF; создай .local-state\anonymize-stoplist.txt (strict:/warn: паттерны)"
+        }
         if (Test-Path $stopFile) {
             $strictPats = @(); $warnPats = @()
             foreach ($line in (Get-Content $stopFile -Encoding UTF8)) {
