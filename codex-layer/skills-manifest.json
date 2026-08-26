@@ -2,10 +2,13 @@
   "enable": [
     "excel-helper", "word-helper", "doc-extract", "pdf-edit",
     "facts-layer", "project-memory", "domain-grilling", "karpathy-guidelines",
-    "handoff-to-new-chat", "llm-interop", "web-access"
+    "handoff-to-new-chat", "llm-interop", "web-access", "ru-writing-style"
   ],
   "skip_reason": {
     "acad-recreation": "AutoCAD runtime и Claude-MCP обвязка; включать после capability-адаптера",
+    "codex-bridge": "управление мостом со стороны Claude; Codex — вторая сторона моста, скилл ему не нужен",
+    "document-quality-gate": "Claude-процедура сдачи; зависит от PDF-экспортёра, которого нет в базе (ревизия 2026-08-26)",
+    "sync-base": "управление релизами claude-base; Codex базу не обновляет",
     "cad-reader": "сначала исправить невалидный YAML frontmatter и проверить CAD backend",
     "chains-pattern": "Claude-specific команды оркестрации; нужен нейтральный adapter",
     "co-verify": "семантика переносима, но document capability ещё не обкатана в Эпике 5",
