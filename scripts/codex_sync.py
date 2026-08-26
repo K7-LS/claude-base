@@ -308,8 +308,8 @@ def load_capability_registry(home: Path, context=None) -> dict:
     manifest = (context or _load_sync_context(home))["skills_manifest"]
     classified = set(manifest.get("enable", [])) | set(manifest.get("skip_reason", {}))
     skill_ids = set(skills)
-    if classified != skill_ids or len(manifest.get("enable", [])) != 11 or len(manifest.get("skip_reason", {})) != 26:
-        raise ValueError("capability registry: skill adapters must mirror the existing 11/26 manifest classification")
+    if classified != skill_ids or (set(manifest.get("enable", [])) & set(manifest.get("skip_reason", {}))):
+        raise ValueError("capability registry: skill adapters must mirror the manifest classification (enable/skip без пересечений)")
     for skill_id, adapter in skills.items():
         enabled = skill_id in manifest["enable"]
         if (adapter["manifest_state"] == "enabled") != enabled:

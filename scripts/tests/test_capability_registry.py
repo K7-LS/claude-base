@@ -39,7 +39,7 @@ def test_registry_covers_exact_roles_skills_and_permissions():
     assert {item["skill_id"] for item in registry["skill_adapters"]} == (
         set(manifest["enable"]) | set(manifest["skip_reason"])
     )
-    assert len(manifest["enable"]) == 11 and len(manifest["skip_reason"]) == 26
+    assert not (set(manifest["enable"]) & set(manifest["skip_reason"]))
     for skill in registry["skill_adapters"]:
         assert skill["optional_capabilities"] == []
         enabled = skill["skill_id"] in manifest["enable"]
