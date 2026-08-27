@@ -287,6 +287,29 @@ def load_capability_registry(home: Path, context=None) -> dict:
         raise ValueError("capability registry: duplicate role_id or skill_id")
     if len(roles) != 16 or sum(x["permission_class"] == "ro" for x in roles.values()) != 7 or sum(x["permission_class"] == "rw" for x in roles.values()) != 9:
         raise ValueError("capability registry: expected 7 RO and 9 RW role adapters")
+    native = data.get("codex_native", {})
+    native_roles = set(native.get("roles", []))
+    native_names = native.get("agent_names", {})
+    native_files = native.get("instruction_files", {})
+    native_routes = native.get("tool_routes", {})
+    if native_roles - set(roles):
+        raise ValueError(f"capability registry: unknown Codex-native roles {sorted(native_roles - set(roles))}")
+    if set(native_names) != native_roles or len(set(native_names.values())) != len(native_names):
+        raise ValueError("capability registry: Codex-native agent_names must cover roles exactly and be unique")
+    if set(native_files) != native_roles:
+        raise ValueError("capability registry: Codex-native instruction_files must cover roles exactly")
+    native_instructions = {}
+    for role_id in native_roles:
+        adapter = roles[role_id]
+        instruction_path = (base / native_files[role_id]).resolve()
+        if not instruction_path.is_relative_to(base.resolve()) or not instruction_path.is_file():
+            raise ValueError(f"capability registry: missing Codex-native instructions for {role_id}")
+        native_instructions[role_id] = instruction_path.read_text(encoding="utf-8").strip()
+        missing_routes = [cap_id for cap_id in [*adapter["required_capabilities"], *adapter.get("optional_capabilities", [])]
+                          if cap_id not in native_routes]
+        if missing_routes:
+            raise ValueError(f"capability registry: {role_id} has no Codex-native routes {missing_routes}")
+    native["_instructions"] = native_instructions
     for item in [*data["role_adapters"], *data["skill_adapters"]]:
         optional = item.get("optional_capabilities", [])
         for cap_id in [*item["required_capabilities"], *optional]:
@@ -383,6 +406,31 @@ def _adapt_legacy_tool_prose_for_codex(text: str) -> str:
         text = re.sub(pattern, replacement, text, flags=re.I)
     return text
 
+
+def _codex_native_instructions(adapter: dict, registry: dict) -> str:
+    """Для выбранной роли взять короткую Codex-native инструкцию."""
+    instructions = registry["codex_native"].get("_instructions", {}).get(adapter["role_id"])
+    if not instructions:
+        raise ValueError(f"capability registry: missing Codex-native instructions for {adapter['role_id']}")
+    return instructions
+
+
+def _render_codex_native_adapter(adapter: dict, registry: dict) -> str:
+    routes = registry["codex_native"]["tool_routes"]
+    required = [routes[capability_id] for capability_id in adapter["required_capabilities"]]
+    optional = [routes[capability_id] for capability_id in adapter.get("optional_capabilities", [])]
+    return (
+        "\n\n[Codex-native adapter]"
+        "\nrequired_tools: " + "; ".join(required) +
+        "\noptional_tools: " + ("; ".join(optional) if optional else "none") +
+        "\npermission_class: " + adapter["permission_class"] +
+        "\ninput_contract: " + adapter["input_contract"] +
+        "\noutput_contract: " + adapter["output_contract"] +
+        "\nverification.codex: " + adapter["verification"].get("codex", "static") +
+        "\nfallback: " + adapter["fallback"] +
+        "\nhandoff: " + adapter["handoff"]
+    )
+
 def _yaml_value(front: str, key: str) -> str:
     """Значение ключа фронтматтера; block-scalar (| и >) собирается целиком:
     | — с переводами строк, > — склейка пробелом."""
@@ -418,6 +466,7 @@ def convert_agent_md(text: str, registry: dict | None = None):
         raise ValueError("Неверный формат: не найдена граница ---")
     front, body = m.group(1), m.group(2)
     name = _yaml_value(front, "name")
+    output_name = name
     model = MODEL_MAP.get(_yaml_value(front, "model"), "gpt-5.6-terra")
     desc = _yaml_value(front, "description")
     tools = _yaml_value(front, "tools")
@@ -432,15 +481,20 @@ def convert_agent_md(text: str, registry: dict | None = None):
         if name and adapter is None:
             raise ValueError(f"capability registry: missing role adapter {name}")
         if adapter:
-            body += "\n\n[Capability adapter]\nrequired: " + ", ".join(adapter["required_capabilities"])
-            body += "\noptional: " + ", ".join(adapter["optional_capabilities"] or ["none"])
-            body += "\npermission_class: " + adapter["permission_class"]
-            body += "\ninput_contract: " + adapter["input_contract"]
-            body += "\noutput_contract: " + adapter["output_contract"]
-            body += "\nverification.claude: " + adapter["verification"].get("claude", "static")
-            body += "\nverification.codex: " + adapter["verification"].get("codex", "static")
-            body += "\nfallback: " + adapter["fallback"] + "\nhandoff: " + adapter["handoff"]
-    toml_text = f"name = {_t(name)}\ndescription = {_t(desc)}\nmodel = {_t(model)}\n"
+            if name in set(registry.get("codex_native", {}).get("roles", [])):
+                output_name = registry["codex_native"]["agent_names"][name]
+                body = _codex_native_instructions(adapter, registry)
+                body += _render_codex_native_adapter(adapter, registry)
+            else:
+                body += "\n\n[Capability adapter]\nrequired: " + ", ".join(adapter["required_capabilities"])
+                body += "\noptional: " + ", ".join(adapter["optional_capabilities"] or ["none"])
+                body += "\npermission_class: " + adapter["permission_class"]
+                body += "\ninput_contract: " + adapter["input_contract"]
+                body += "\noutput_contract: " + adapter["output_contract"]
+                body += "\nverification.claude: " + adapter["verification"].get("claude", "static")
+                body += "\nverification.codex: " + adapter["verification"].get("codex", "static")
+                body += "\nfallback: " + adapter["fallback"] + "\nhandoff: " + adapter["handoff"]
+    toml_text = f"name = {_t(output_name)}\ndescription = {_t(desc)}\nmodel = {_t(model)}\n"
     if (registry is not None and name and registry["_roles"][name]["permission_class"] == "ro") or (registry is None and tools and not any(marker in tools for marker in WRITE_TOOL_MARKERS)):
         toml_text += 'sandbox_mode = "read-only"\n'   # [I2] ревьюер без Write/Edit — сузить sandbox в Codex
     toml_text += f"developer_instructions = {_toml_block(body.strip())}\n"
@@ -507,6 +561,25 @@ def render_profiles(home: Path) -> dict:
         out[f"{f.stem}.config.toml"] = PROFILE_HEADER.format(name=f.stem) + text
     return out
 
+
+def render_native_agent_tables(agent_tomls: dict, registry: dict) -> str:
+    """Зарегистрировать native-профили в стабильном multi-agent config Codex."""
+    native = registry.get("codex_native", {})
+    lines = []
+    for role_id in native.get("roles", []):
+        filename = f"{role_id}.toml"
+        parsed = tomllib.loads(agent_tomls[filename])
+        agent_name = native["agent_names"][role_id]
+        if parsed["name"] != agent_name:
+            raise ValueError(f"capability registry: generated agent name mismatch for {role_id}")
+        lines.extend([
+            f"[agents.{agent_name}]",
+            f"description = {_t(parsed['description'])}",
+            f"config_file = {_t('agents/' + filename)}",
+            "",
+        ])
+    return "\n".join(lines).rstrip()
+
 def render_target_codex(home: Path, context=None) -> dict:
     """Чистый рендер всех артефактов таргета codex: ключ → содержимое. Ничего не пишет."""
     claude = home / ".claude"
@@ -515,13 +588,17 @@ def render_target_codex(home: Path, context=None) -> dict:
     registry = load_capability_registry(home, context=context) if registry_path.exists() else None
     overlay = load_overlay(home)
     eff_allow = effective_allow(allow, overlay)
+    agent_tomls = collect_agent_tomls(claude / "agents", registry)
+    config_parts = [render_base_tables(home)]
+    if registry and registry.get("codex_native"):
+        config_parts.append(render_native_agent_tables(agent_tomls, registry))
+    config_parts.append(render_mcp_toml(mcp, eff_allow, bridge=set(overlay)))
     out = {
         "AGENTS.md": render_agents_md(core, layer),
-        "config.toml#managed": (render_base_tables(home) + "\n\n"
-                                + render_mcp_toml(mcp, eff_allow, bridge=set(overlay))).strip(),
+        "config.toml#managed": "\n\n".join(part for part in config_parts if part).strip(),
         "hooks.json": json.dumps(render_hooks_json(home), ensure_ascii=False, indent=2),
     }
-    for fname, toml_text in collect_agent_tomls(claude / "agents", registry).items():
+    for fname, toml_text in agent_tomls.items():
         out[f"agents/{fname}"] = toml_text
     out.update(render_profiles(home))
     return out
@@ -548,6 +625,10 @@ def collect_inputs(home: Path, context=None) -> dict:
         p = claude / "codex-layer" / name
         if p.exists():
             inputs[f"codex-layer/{name}"] = _sha(p.read_text(encoding="utf-8"))
+    native_instructions = claude / "codex-layer" / "agent-instructions"
+    if native_instructions.exists():
+        for f in sorted(native_instructions.glob("*.md")):
+            inputs[f"codex-layer/agent-instructions/{f.name}"] = _sha(f.read_text(encoding="utf-8"))
     for f in sorted((claude / "agents").glob("*.md")):
         inputs[f"agents/{f.name}"] = _sha(f.read_text(encoding="utf-8"))
     tj = claude / "codex-layer" / "targets.json"
@@ -718,6 +799,26 @@ def _write_atomic(p: Path, text: str) -> None:
     finally:
         tmp.unlink(missing_ok=True)
 
+def whitelist_path(home: Path) -> Path:
+    """Переносимый whitelist MCP (решение Codex, хаб-задачи 2026-08-27):
+    Codex читает свою копию ~/.codex/base/mcp-whitelist.json и не зависит от
+    Claude-базы; канон остаётся в codex-layer, sync зеркалит его сюда."""
+    local = home / ".codex" / "base" / "mcp-whitelist.json"
+    return local if local.exists() else home / ".claude" / "codex-layer" / "mcp-whitelist.json"
+
+
+def mirror_whitelist(home: Path) -> None:
+    canon = home / ".claude" / "codex-layer" / "mcp-whitelist.json"
+    if not canon.exists():
+        return
+    target = home / ".codex" / "base" / "mcp-whitelist.json"
+    text = canon.read_text(encoding="utf-8")
+    if not target.exists() or target.read_text(encoding="utf-8") != text:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_atomic(target, text)
+        print("[codex_sync] mcp-whitelist: зеркало обновлено -> ~/.codex/base/")
+
+
 def ensure_feature_flags(home: Path) -> bool:
     """Вписывает обязательные ключи из codex-layer/feature-flags.json в
     СУЩЕСТВУЮЩУЮ таблицу [features] ~/.codex/config.toml (вторая таблица
@@ -817,6 +918,7 @@ def sync(home: Path, force=None, dry_run: bool = False) -> int:
             _write_atomic(p, rendered[key])
     ensure_skill_junctions(manifest, claude / "skills", home / ".agents" / "skills")
     ensure_feature_flags(home)
+    mirror_whitelist(home)
     # манифест: записанное/чистое = ожидаемый хеш; пропущенный дрейф (ручной или гейт-ошибка) = прежнее значение
     old = (load_manifest(home) or {}).get("outputs", {})
     unwritten = set(skipped) | ({"config.toml#managed"} if build_error else set())
@@ -862,8 +964,7 @@ def mcp_cmd(home: Path, action: str, names: list) -> int:
         if names:
             print("[codex_sync] error: mcp status не принимает имена серверов", file=sys.stderr)
             return 1
-        allow = json.loads((home / ".claude" / "codex-layer" / "mcp-whitelist.json")
-                           .read_text(encoding="utf-8"))["allow"]
+        allow = json.loads(whitelist_path(home).read_text(encoding="utf-8"))["allow"]
         print(f"whitelist: {', '.join(sorted(allow))}")
         print(f"мост: {', '.join(overlay) if overlay else '(выключен)'}")
         for n in overlay:

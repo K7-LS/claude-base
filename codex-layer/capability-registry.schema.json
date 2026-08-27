@@ -1,9 +1,42 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["schema_version", "capabilities", "tool_map", "role_adapters", "skill_adapters"],
+  "required": ["schema_version", "codex_native", "capabilities", "tool_map", "role_adapters", "skill_adapters"],
   "properties": {
     "schema_version": {"const": 1},
+    "codex_native": {
+      "type": "object",
+      "required": ["roles", "agent_names", "instruction_files", "tool_routes"],
+      "properties": {
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "agent_names": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          }
+        },
+        "instruction_files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^agent-instructions/[a-z0-9-]+\\.md$"
+          }
+        },
+        "tool_routes": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "capabilities": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["capability_id", "purpose", "access", "operations", "providers", "fallback", "escalation", "verification"], "properties": {"capability_id": {"type": "string", "pattern": "^[a-z0-9.]+$"}, "purpose": {"type": "string", "minLength": 1}, "access": {"enum": ["read", "write", "execute"]}, "operations": {"type": "array", "minItems": 1, "items": {"enum": ["read", "write", "render", "search", "execute", "validate"]}}, "providers": {"type": "array", "items": {"type": "object", "required": ["provider", "profile", "access", "enabled_by_default", "environments", "availability"], "properties": {"provider": {"type": "string", "minLength": 1}, "profile": {"type": "string", "minLength": 1}, "access": {"enum": ["read", "write", "execute"]}, "enabled_by_default": {"type": "boolean"}, "environments": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"enum": ["claude", "codex"]}}, "availability": {"enum": ["available", "on-demand", "blocked"]}}}}, "fallback": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}, "escalation": {"type": "string", "minLength": 1}, "verification": {"type": "object", "required": ["status"], "properties": {"status": {"enum": ["static", "forward-test", "live", "blocked"]}}}}}},
     "tool_map": {"type": "array", "items": {"type": "object", "required": ["raw_tool_pattern", "capability_id"]}},
     "role_adapters": {"type": "array", "items": {"type": "object", "required": ["role_id", "permission_class", "required_capabilities", "optional_capabilities", "input_contract", "output_contract", "fallback", "handoff", "verification"], "properties": {"role_id": {"type": "string", "minLength": 1}, "permission_class": {"enum": ["ro", "rw"]}, "required_capabilities": {"type": "array"}, "optional_capabilities": {"type": "array"}, "input_contract": {"type": "string", "minLength": 1}, "output_contract": {"type": "string", "minLength": 1}, "fallback": {"type": "string", "minLength": 1}, "handoff": {"type": "string", "minLength": 1}, "verification": {"type": "object", "required": ["claude", "codex"], "properties": {"claude": {"enum": ["static", "forward-test", "live", "blocked"]}, "codex": {"enum": ["static", "forward-test", "live", "blocked"]}}}}}},

@@ -2,7 +2,9 @@
 """Coverage канонического capability registry Epic 4b."""
 import json
 import pathlib
+import re
 import sys
+import tomllib
 
 import pytest
 
@@ -88,17 +90,69 @@ def test_converter_has_no_raw_mcp_and_rejects_unknown_identifier():
 
 def test_real_registry_render_exposes_complete_adapter_contract():
     """Реальный канон, а не мини-фикстура, порождает все 16 адаптеров."""
-    from codex_sync import render_target_codex
+    from codex_sync import load_capability_registry, render_target_codex
 
+    registry = load_capability_registry(HOME)
+    native_roles = set(registry["codex_native"]["roles"])
     rendered = render_target_codex(HOME)
     for role_id in _role_names():
         text = rendered[f"agents/{role_id}.toml"]
-        for field in (
-            "[Capability adapter]", "required:", "optional:",
-            "permission_class:", "input_contract:", "output_contract:",
-            "verification.claude:", "verification.codex:", "fallback:", "handoff:",
-        ):
+        if role_id in native_roles:
+            fields = (
+                "[Codex-native adapter]", "required_tools:", "optional_tools:",
+                "permission_class:", "input_contract:", "output_contract:",
+                "verification.codex:", "fallback:", "handoff:",
+            )
+        else:
+            fields = (
+                "[Capability adapter]", "required:", "optional:",
+                "permission_class:", "input_contract:", "output_contract:",
+                "verification.claude:", "verification.codex:", "fallback:", "handoff:",
+            )
+        for field in fields:
             assert field in text, f"{role_id}: {field}"
+
+
+def test_three_codex_native_profiles_use_real_routes_only():
+    from codex_sync import load_capability_registry, render_target_codex
+
+    registry = load_capability_registry(HOME)
+    assert registry["codex_native"]["roles"] == ["auditor", "norm-lookup", "pto-engineer"]
+    assert registry["codex_native"]["agent_names"] == {
+        "auditor": "auditor", "norm-lookup": "norm_lookup", "pto-engineer": "pto_engineer",
+    }
+    assert set(registry["codex_native"]["instruction_files"]) == {
+        "auditor", "norm-lookup", "pto-engineer",
+    }
+    rendered = render_target_codex(HOME)
+    managed = rendered["config.toml#managed"]
+    managed_data = tomllib.loads(managed)
+    for role_id in registry["codex_native"]["roles"]:
+        text = rendered[f"agents/{role_id}.toml"]
+        parsed = tomllib.loads(text)
+        instructions = parsed["developer_instructions"]
+        agent_name = registry["codex_native"]["agent_names"][role_id]
+        assert "`shell_command`" in text
+        assert "`functions.exec`" not in text
+        assert "capability `" not in text
+        assert "[Capability adapter]" not in text
+        assert "Основной Claude" not in text
+        assert "основному Claude" not in text
+        assert not re.search(r"\b(?:Read|Write|Edit|Glob|Grep|Bash)\b", instructions)
+        assert "mcp__" not in text
+        assert f"name = '{agent_name}'" in text
+        assert f"[agents.{agent_name}]" in managed
+        assert managed_data["agents"][agent_name]["config_file"] == f"agents/{role_id}.toml"
+        for stale in (
+            "`web.extract`", "web_extract_", "fetch-MCP", "browser_navigate",
+            "get_document_text", "read_data", "pdf_info", "pdf_read_pages",
+            "find_text_in_document", "search_and_replace", "`скилл `",
+        ):
+            assert stale not in text, f"{role_id}: stale {stale}"
+    assert "`web-access`" in rendered["agents/norm-lookup.toml"]
+    assert "`browser:control-in-app-browser`" in rendered["agents/norm-lookup.toml"]
+    assert "`documents:documents`" in rendered["agents/auditor.toml"]
+    assert "`spreadsheets:Spreadsheets`" in rendered["agents/pto-engineer.toml"]
 
 
 def test_every_raw_identifier_in_actual_agents_resolves_by_registry():

@@ -1,5 +1,37 @@
 {
   "schema_version": 1,
+  "codex_native": {
+    "roles": [
+      "auditor",
+      "norm-lookup",
+      "pto-engineer"
+    ],
+    "agent_names": {
+      "auditor": "auditor",
+      "norm-lookup": "norm_lookup",
+      "pto-engineer": "pto_engineer"
+    },
+    "instruction_files": {
+      "auditor": "agent-instructions/auditor.md",
+      "norm-lookup": "agent-instructions/norm-lookup.md",
+      "pto-engineer": "agent-instructions/pto-engineer.md"
+    },
+    "tool_routes": {
+      "core.files.read": "`shell_command` (`Get-Content`, `rg`, `rg --files`)",
+      "core.files.write": "`apply_patch` для текстовых файлов",
+      "core.shell.execute": "`shell_command`",
+      "web.search": "скилл `browser:control-in-app-browser` для поиска",
+      "web.fetch": "скилл `web-access` для открытия и проверки источника",
+      "web.extract": "скилл `web-access` для извлечения текста страницы",
+      "web.browser.interact": "скилл `browser:control-in-app-browser`",
+      "document.word.read": "скилл `documents:documents`",
+      "document.word.write": "скилл `documents:documents`",
+      "spreadsheet.read": "скилл `spreadsheets:Spreadsheets`",
+      "spreadsheet.write": "скилл `spreadsheets:Spreadsheets`",
+      "pdf.read": "скилл `pdf:pdf`",
+      "pdf.render": "скилл `pdf:pdf`"
+    }
+  },
   "capabilities": [
     {
       "capability_id": "core.files.read",
@@ -692,7 +724,7 @@
       "handoff": "return audit record",
       "verification": {
         "claude": "static",
-        "codex": "static"
+        "codex": "live"
       }
     },
     {
@@ -730,7 +762,7 @@
       "handoff": "return exact citation",
       "verification": {
         "claude": "static",
-        "codex": "static"
+        "codex": "live"
       }
     },
     {
@@ -907,7 +939,7 @@
       "handoff": "request verifier",
       "verification": {
         "claude": "static",
-        "codex": "static"
+        "codex": "live"
       }
     },
     {
