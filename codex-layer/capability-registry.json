@@ -1,104 +1,1654 @@
 {
   "schema_version": 1,
   "capabilities": [
-    {"capability_id":"core.files.read","purpose":"read workspace files","access":"read","operations":["read"],"providers":[{"provider":"codex-read","profile":"core","access":"read","enabled_by_default":true,"environments":["claude","codex"],"availability":"available"}],"fallback":["report missing or unreadable file"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"live","evidence":"Codex built-in tool"}},
-    {"capability_id":"core.files.write","purpose":"write workspace files","access":"write","operations":["write"],"providers":[{"provider":"codex-write-edit","profile":"core","access":"write","enabled_by_default":true,"environments":["claude","codex"],"availability":"available"}],"fallback":["return patch plan if write permission is absent"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"live","evidence":"Codex built-in tool"}},
-    {"capability_id":"core.shell.execute","purpose":"run local verification commands","access":"execute","operations":["execute","validate"],"providers":[{"provider":"codex-shell","profile":"core","access":"execute","enabled_by_default":true,"environments":["claude","codex"],"availability":"available"}],"fallback":["report command unavailable"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"live","evidence":"Codex built-in tool"}},
-    {"capability_id":"web.search","purpose":"search public web sources","access":"read","operations":["search"],"providers":[{"provider":"web-access","profile":"web","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["state that source was not verified"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"static"}},
-    {"capability_id":"web.fetch","purpose":"fetch a known web resource","access":"read","operations":["read"],"providers":[{"provider":"web-access","profile":"web","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["use supplied local source"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"static"}},
-    {"capability_id":"web.extract","purpose":"extract web page content","access":"read","operations":["read"],"providers":[{"provider":"web-access","profile":"web","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["use fetch output without extraction"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"static"}},
-    {"capability_id":"web.browser.interact","purpose":"inspect an interactive web page","access":"execute","operations":["read","execute"],"providers":[{"provider":"browser","profile":"web","access":"execute","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["return reproducible manual steps"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"static"}},
-    {"capability_id":"document.word.read","purpose":"read and inspect DOCX","access":"read","operations":["read","validate"],"providers":[{"provider":"documents","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"word-mcp","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["use python-docx only when available"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: Word MCP 3.4.4 protocol read passed; current Desktop session needs restart to expose newly registered MCP"}},
-    {"capability_id":"document.word.write","purpose":"create or edit DOCX","access":"write","operations":["write","render","validate"],"providers":[{"provider":"documents","profile":"documents","access":"write","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"word-mcp","profile":"documents","access":"write","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["return source content and report missing document runtime"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: controlled search-and-replace on temporary copy only; broad Word edit remains unverified"}},
-    {"capability_id":"spreadsheet.read","purpose":"read and validate spreadsheet data","access":"read","operations":["read","validate"],"providers":[{"provider":"spreadsheets","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"excel-mcp","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["use openpyxl only when available"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: excel-mcp 1.28.1 read passed; native Codex document-control session was not connected"}},
-    {"capability_id":"spreadsheet.write","purpose":"create or edit spreadsheets","access":"write","operations":["write","validate"],"providers":[{"provider":"spreadsheets","profile":"documents","access":"write","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"excel-mcp","profile":"documents","access":"write","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["return change plan and report missing spreadsheet runtime"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: write tools are listed but no MCP write test is accepted"}},
-    {"capability_id":"pdf.read","purpose":"read PDF structure and text","access":"read","operations":["read","validate"],"providers":[{"provider":"pdf","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"pdf-mcp","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["report missing PDF reader"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: pdf-mcp 1.20.0 read passed; native PDF document-control surface is absent"}},
-    {"capability_id":"pdf.render","purpose":"render PDF for visual review","access":"read","operations":["render","validate"],"providers":[{"provider":"pdf","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"},{"provider":"pdf-mcp","profile":"documents","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["report visual verification unavailable"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 5: PDF read passed; render and PDF-object edit remain unverified"}},
-    {"capability_id":"revit.inspect","purpose":"inspect a live Revit model","access":"read","operations":["read"],"providers":[{"provider":"Revit-Connector","profile":"Revit/AutoCAD","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["request exported model evidence or enable on-demand bridge"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"live","evidence":"Epic 3.1: Codex Desktop runtime single-server read-only get_revit_status passed after manual restart; direct bridge passed; Desktop Import UI, CLI, and IDE not tested"}},
-    {"capability_id":"revit.execute","purpose":"execute code in a live Revit model","access":"execute","operations":["execute"],"providers":[{"provider":"Revit-Connector","profile":"Revit/AutoCAD","access":"execute","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["return reviewed pyRevit script without execution"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 3.1: Codex Desktop read-only inspect smoke passed; execute was not tested"}},
-    {"capability_id":"revit.modify","purpose":"modify a live Revit model","access":"write","operations":["write","execute","validate"],"providers":[{"provider":"Revit-Connector","profile":"Revit/AutoCAD","access":"write","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["return reviewed change plan without model mutation"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"forward-test","evidence":"Epic 3.1: Codex Desktop read-only inspect smoke passed; model modification was not tested"}},
-    {"capability_id":"pdf.write","purpose":"edit PDF only through an approved provider","access":"write","operations":["write","validate"],"providers":[],"fallback":["return edit plan and report blocked provider"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"blocked","evidence":"no approved PDF edit provider"}},
-    {"capability_id":"autocad.inspect","purpose":"inspect a live AutoCAD drawing","access":"read","operations":["read"],"providers":[{"provider":"autocad-mcp","profile":"Revit/AutoCAD","access":"read","enabled_by_default":false,"environments":["claude","codex"],"availability":"on-demand"}],"fallback":["request exported drawing evidence or enable on-demand bridge"],"escalation":"use fallback and hand off when unavailable","verification":{"status":"live","evidence":"Epic 3.1: Codex Desktop runtime single-server read-only system(operation=status) passed after manual restart; direct bridge passed; Desktop Import UI, CLI, and IDE not tested"}}
+    {
+      "capability_id": "core.files.read",
+      "purpose": "read workspace files",
+      "access": "read",
+      "operations": [
+        "read"
+      ],
+      "providers": [
+        {
+          "provider": "codex-read",
+          "profile": "core",
+          "access": "read",
+          "enabled_by_default": true,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "available"
+        }
+      ],
+      "fallback": [
+        "report missing or unreadable file"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "live",
+        "evidence": "Codex built-in tool"
+      }
+    },
+    {
+      "capability_id": "core.files.write",
+      "purpose": "write workspace files",
+      "access": "write",
+      "operations": [
+        "write"
+      ],
+      "providers": [
+        {
+          "provider": "codex-write-edit",
+          "profile": "core",
+          "access": "write",
+          "enabled_by_default": true,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "available"
+        }
+      ],
+      "fallback": [
+        "return patch plan if write permission is absent"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "live",
+        "evidence": "Codex built-in tool"
+      }
+    },
+    {
+      "capability_id": "core.shell.execute",
+      "purpose": "run local verification commands",
+      "access": "execute",
+      "operations": [
+        "execute",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "codex-shell",
+          "profile": "core",
+          "access": "execute",
+          "enabled_by_default": true,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "available"
+        }
+      ],
+      "fallback": [
+        "report command unavailable"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "live",
+        "evidence": "Codex built-in tool"
+      }
+    },
+    {
+      "capability_id": "web.search",
+      "purpose": "search public web sources",
+      "access": "read",
+      "operations": [
+        "search"
+      ],
+      "providers": [
+        {
+          "provider": "web-access",
+          "profile": "web",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "state that source was not verified"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "capability_id": "web.fetch",
+      "purpose": "fetch a known web resource",
+      "access": "read",
+      "operations": [
+        "read"
+      ],
+      "providers": [
+        {
+          "provider": "web-access",
+          "profile": "web",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "use supplied local source"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "capability_id": "web.extract",
+      "purpose": "extract web page content",
+      "access": "read",
+      "operations": [
+        "read"
+      ],
+      "providers": [
+        {
+          "provider": "web-access",
+          "profile": "web",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "use fetch output without extraction"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "capability_id": "web.browser.interact",
+      "purpose": "inspect an interactive web page",
+      "access": "execute",
+      "operations": [
+        "read",
+        "execute"
+      ],
+      "providers": [
+        {
+          "provider": "browser",
+          "profile": "web",
+          "access": "execute",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "return reproducible manual steps"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "capability_id": "document.word.read",
+      "purpose": "read and inspect DOCX",
+      "access": "read",
+      "operations": [
+        "read",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "documents",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "word-mcp",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "use python-docx only when available"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: Word MCP 3.4.4 protocol read passed; current Desktop session needs restart to expose newly registered MCP"
+      }
+    },
+    {
+      "capability_id": "document.word.write",
+      "purpose": "create or edit DOCX",
+      "access": "write",
+      "operations": [
+        "write",
+        "render",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "documents",
+          "profile": "documents",
+          "access": "write",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "word-mcp",
+          "profile": "documents",
+          "access": "write",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "return source content and report missing document runtime"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: controlled search-and-replace on temporary copy only; broad Word edit remains unverified"
+      }
+    },
+    {
+      "capability_id": "spreadsheet.read",
+      "purpose": "read and validate spreadsheet data",
+      "access": "read",
+      "operations": [
+        "read",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "spreadsheets",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "excel-mcp",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "use openpyxl only when available"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: excel-mcp 1.28.1 read passed; native Codex document-control session was not connected"
+      }
+    },
+    {
+      "capability_id": "spreadsheet.write",
+      "purpose": "create or edit spreadsheets",
+      "access": "write",
+      "operations": [
+        "write",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "spreadsheets",
+          "profile": "documents",
+          "access": "write",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "excel-mcp",
+          "profile": "documents",
+          "access": "write",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "return change plan and report missing spreadsheet runtime"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: write tools are listed but no MCP write test is accepted"
+      }
+    },
+    {
+      "capability_id": "pdf.read",
+      "purpose": "read PDF structure and text",
+      "access": "read",
+      "operations": [
+        "read",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "pdf",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "pdf-mcp",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "report missing PDF reader"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: pdf-mcp 1.20.0 read passed; native PDF document-control surface is absent"
+      }
+    },
+    {
+      "capability_id": "pdf.render",
+      "purpose": "render PDF for visual review",
+      "access": "read",
+      "operations": [
+        "render",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "pdf",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        },
+        {
+          "provider": "pdf-mcp",
+          "profile": "documents",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "report visual verification unavailable"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 5: PDF read passed; render and PDF-object edit remain unverified"
+      }
+    },
+    {
+      "capability_id": "revit.inspect",
+      "purpose": "inspect a live Revit model",
+      "access": "read",
+      "operations": [
+        "read"
+      ],
+      "providers": [
+        {
+          "provider": "Revit-Connector",
+          "profile": "Revit/AutoCAD",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "request exported model evidence or enable on-demand bridge"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "live",
+        "evidence": "Epic 3.1: Codex Desktop runtime single-server read-only get_revit_status passed after manual restart; direct bridge passed; Desktop Import UI, CLI, and IDE not tested"
+      }
+    },
+    {
+      "capability_id": "revit.execute",
+      "purpose": "execute code in a live Revit model",
+      "access": "execute",
+      "operations": [
+        "execute"
+      ],
+      "providers": [
+        {
+          "provider": "Revit-Connector",
+          "profile": "Revit/AutoCAD",
+          "access": "execute",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "return reviewed pyRevit script without execution"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 3.1: Codex Desktop read-only inspect smoke passed; execute was not tested"
+      }
+    },
+    {
+      "capability_id": "revit.modify",
+      "purpose": "modify a live Revit model",
+      "access": "write",
+      "operations": [
+        "write",
+        "execute",
+        "validate"
+      ],
+      "providers": [
+        {
+          "provider": "Revit-Connector",
+          "profile": "Revit/AutoCAD",
+          "access": "write",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "return reviewed change plan without model mutation"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "forward-test",
+        "evidence": "Epic 3.1: Codex Desktop read-only inspect smoke passed; model modification was not tested"
+      }
+    },
+    {
+      "capability_id": "pdf.write",
+      "purpose": "edit PDF only through an approved provider",
+      "access": "write",
+      "operations": [
+        "write",
+        "validate"
+      ],
+      "providers": [],
+      "fallback": [
+        "return edit plan and report blocked provider"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "blocked",
+        "evidence": "no approved PDF edit provider"
+      }
+    },
+    {
+      "capability_id": "autocad.inspect",
+      "purpose": "inspect a live AutoCAD drawing",
+      "access": "read",
+      "operations": [
+        "read"
+      ],
+      "providers": [
+        {
+          "provider": "autocad-mcp",
+          "profile": "Revit/AutoCAD",
+          "access": "read",
+          "enabled_by_default": false,
+          "environments": [
+            "claude",
+            "codex"
+          ],
+          "availability": "on-demand"
+        }
+      ],
+      "fallback": [
+        "request exported drawing evidence or enable on-demand bridge"
+      ],
+      "escalation": "use fallback and hand off when unavailable",
+      "verification": {
+        "status": "live",
+        "evidence": "Epic 3.1: Codex Desktop runtime single-server read-only system(operation=status) passed after manual restart; direct bridge passed; Desktop Import UI, CLI, and IDE not tested"
+      }
+    }
   ],
   "tool_map": [
     {
       "raw_tool_pattern": "^mcp__autocad_mcp__system$",
       "capability_id": "autocad.inspect"
-    },    {"raw_tool_pattern":"^mcp__excel__(?:.*(?:create|write|apply|format|merge|table).*)$","capability_id":"spreadsheet.write"},
-    {"raw_tool_pattern":"^mcp__excel__.*$","capability_id":"spreadsheet.read"},
-    {"raw_tool_pattern":"^mcp__word__(?:.*(?:create|copy|add|format|replace|merge|convert).*)$","capability_id":"document.word.write"},
-    {"raw_tool_pattern":"^mcp__word__.*$","capability_id":"document.word.read"},
-    {"raw_tool_pattern":"^mcp__pdf-mcp__pdf_render_pages$","capability_id":"pdf.render"},
-    {"raw_tool_pattern":"^mcp__pdf-mcp__.*$","capability_id":"pdf.read"},
-    {"raw_tool_pattern":"^mcp__exa__web_search_exa$","capability_id":"web.search"},
-    {"raw_tool_pattern":"^mcp__exa__web_fetch_exa$","capability_id":"web.fetch"},
-    {"raw_tool_pattern":"^mcp__fetch__fetch$","capability_id":"web.fetch"},
-    {"raw_tool_pattern":"^mcp__firecrawl__firecrawl_search$","capability_id":"web.search"},
-    {"raw_tool_pattern":"^mcp__firecrawl__(?:firecrawl_extract|firecrawl_scrape)$","capability_id":"web.extract"},
-    {"raw_tool_pattern":"^mcp__playwright__.*$","capability_id":"web.browser.interact"},
-    {"raw_tool_pattern":"^mcp__Revit-Connector__execute_revit_code$","capability_id":"revit.execute"},
-    {"raw_tool_pattern":"^mcp__Revit-Connector__(?:place_family|color_splash|clear_colors)$","capability_id":"revit.modify"},
-    {"raw_tool_pattern":"^mcp__Revit-Connector__.*$","capability_id":"revit.inspect"}
+    },
+    {
+      "raw_tool_pattern": "^mcp__excel__(?:.*(?:create|write|apply|format|merge|table).*)$",
+      "capability_id": "spreadsheet.write"
+    },
+    {
+      "raw_tool_pattern": "^mcp__excel__.*$",
+      "capability_id": "spreadsheet.read"
+    },
+    {
+      "raw_tool_pattern": "^mcp__word__(?:.*(?:create|copy|add|format|replace|merge|convert).*)$",
+      "capability_id": "document.word.write"
+    },
+    {
+      "raw_tool_pattern": "^mcp__word__.*$",
+      "capability_id": "document.word.read"
+    },
+    {
+      "raw_tool_pattern": "^mcp__pdf-mcp__pdf_render_pages$",
+      "capability_id": "pdf.render"
+    },
+    {
+      "raw_tool_pattern": "^mcp__pdf-mcp__.*$",
+      "capability_id": "pdf.read"
+    },
+    {
+      "raw_tool_pattern": "^mcp__exa__web_search_exa$",
+      "capability_id": "web.search"
+    },
+    {
+      "raw_tool_pattern": "^mcp__exa__web_fetch_exa$",
+      "capability_id": "web.fetch"
+    },
+    {
+      "raw_tool_pattern": "^mcp__fetch__fetch$",
+      "capability_id": "web.fetch"
+    },
+    {
+      "raw_tool_pattern": "^mcp__firecrawl__firecrawl_search$",
+      "capability_id": "web.search"
+    },
+    {
+      "raw_tool_pattern": "^mcp__firecrawl__(?:firecrawl_extract|firecrawl_scrape)$",
+      "capability_id": "web.extract"
+    },
+    {
+      "raw_tool_pattern": "^mcp__playwright__.*$",
+      "capability_id": "web.browser.interact"
+    },
+    {
+      "raw_tool_pattern": "^mcp__Revit-Connector__execute_revit_code$",
+      "capability_id": "revit.execute"
+    },
+    {
+      "raw_tool_pattern": "^mcp__Revit-Connector__(?:place_family|color_splash|clear_colors)$",
+      "capability_id": "revit.modify"
+    },
+    {
+      "raw_tool_pattern": "^mcp__Revit-Connector__.*$",
+      "capability_id": "revit.inspect"
+    }
   ],
   "role_adapters": [
-    {"role_id":"audit-rd-section","permission_class":"ro","required_capabilities":["core.files.read","document.word.read","pdf.read","spreadsheet.read"],"optional_capabilities":["web.search"],"input_contract":"section and sources","output_contract":"findings with evidence","fallback":"return unverified gaps","handoff":"send evidence list to coordinator","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"auditor","permission_class":"ro","required_capabilities":["core.files.read","document.word.read","pdf.read","spreadsheet.read"],"optional_capabilities":["web.search"],"input_contract":"artifact and acceptance criteria","output_contract":"PASS/FAIL findings","fallback":"fail unreadable artifact","handoff":"return audit record","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"excel-validator","permission_class":"ro","required_capabilities":["core.files.read","spreadsheet.read"],"optional_capabilities":[],"input_contract":"workbook and checks","output_contract":"validation report","fallback":"report unavailable workbook runtime","handoff":"return findings","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"norm-lookup","permission_class":"ro","required_capabilities":["core.files.read","web.search","web.fetch"],"optional_capabilities":["pdf.read","document.word.read"],"input_contract":"norm question","output_contract":"quoted source and edition","fallback":"mark source unverified","handoff":"return exact citation","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"pdf-reviewer","permission_class":"ro","required_capabilities":["core.files.read","pdf.read","pdf.render"],"optional_capabilities":[],"input_contract":"PDF and review scope","output_contract":"visual and text findings","fallback":"mark visual check unavailable","handoff":"return findings","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"rd-coordinator","permission_class":"ro","required_capabilities":["core.files.read"],"optional_capabilities":["document.word.read","pdf.read"],"input_contract":"discipline inputs","output_contract":"coordination issues","fallback":"return missing inputs","handoff":"route issues to owners","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"word-checker","permission_class":"ro","required_capabilities":["core.files.read","document.word.read"],"optional_capabilities":[],"input_contract":"DOCX and checklist","output_contract":"document QA","fallback":"report document runtime unavailable","handoff":"return findings","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"designer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write","spreadsheet.write"],"optional_capabilities":["web.search"],"input_contract":"brief and inputs","output_contract":"editable artifacts","fallback":"return patch plan","handoff":"request independent audit","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"expertiza-responder","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write"],"optional_capabilities":["pdf.read","web.search"],"input_contract":"comments and evidence","output_contract":"response document","fallback":"return response draft","handoff":"request legal/technical review","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"id-engineer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write","spreadsheet.write"],"optional_capabilities":["web.search"],"input_contract":"ID source files","output_contract":"ID documents","fallback":"return structured draft","handoff":"request verifier","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"kp-writer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write"],"optional_capabilities":["spreadsheet.read","web.search"],"input_contract":"commercial inputs","output_contract":"editable proposal","fallback":"return text draft","handoff":"request owner review","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"letter-writer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write"],"optional_capabilities":[],"input_contract":"facts and addressee data","output_contract":"editable letter","fallback":"return text draft","handoff":"request owner approval","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"pto-engineer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","document.word.write","spreadsheet.write"],"optional_capabilities":["pdf.read"],"input_contract":"production sources","output_contract":"PTО artifact","fallback":"return structured draft","handoff":"request verifier","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"pyrevit-engineer","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","revit.inspect","revit.execute","revit.modify"],"optional_capabilities":[],"input_contract":"model task and safety scope","output_contract":"executed result or script","fallback":"return reviewed script without execution","handoff":"require live-model verification","verification":{"claude":"blocked","codex":"blocked"}},
-    {"role_id":"smetchik","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","spreadsheet.write"],"optional_capabilities":["web.search"],"input_contract":"estimate sources","output_contract":"editable estimate workbook","fallback":"return calculation table","handoff":"request price/source review","verification":{"claude":"static","codex":"static"}},
-    {"role_id":"snabzhenets","permission_class":"rw","required_capabilities":["core.files.read","core.files.write","spreadsheet.write"],"optional_capabilities":["pdf.read","web.search"],"input_contract":"procurement demand","output_contract":"procurement workbook","fallback":"return procurement list","handoff":"request source review","verification":{"claude":"static","codex":"static"}}
+    {
+      "role_id": "audit-rd-section",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "document.word.read",
+        "pdf.read",
+        "spreadsheet.read"
+      ],
+      "optional_capabilities": [
+        "web.search"
+      ],
+      "input_contract": "section and sources",
+      "output_contract": "findings with evidence",
+      "fallback": "return unverified gaps",
+      "handoff": "send evidence list to coordinator",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "auditor",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "document.word.read",
+        "pdf.read",
+        "spreadsheet.read"
+      ],
+      "optional_capabilities": [
+        "web.search"
+      ],
+      "input_contract": "artifact and acceptance criteria",
+      "output_contract": "PASS/FAIL findings",
+      "fallback": "fail unreadable artifact",
+      "handoff": "return audit record",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "excel-validator",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "spreadsheet.read"
+      ],
+      "optional_capabilities": [],
+      "input_contract": "workbook and checks",
+      "output_contract": "validation report",
+      "fallback": "report unavailable workbook runtime",
+      "handoff": "return findings",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "norm-lookup",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "web.search",
+        "web.fetch"
+      ],
+      "optional_capabilities": [
+        "pdf.read",
+        "document.word.read"
+      ],
+      "input_contract": "norm question",
+      "output_contract": "quoted source and edition",
+      "fallback": "mark source unverified",
+      "handoff": "return exact citation",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "pdf-reviewer",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "pdf.read",
+        "pdf.render"
+      ],
+      "optional_capabilities": [],
+      "input_contract": "PDF and review scope",
+      "output_contract": "visual and text findings",
+      "fallback": "mark visual check unavailable",
+      "handoff": "return findings",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "rd-coordinator",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "optional_capabilities": [
+        "document.word.read",
+        "pdf.read"
+      ],
+      "input_contract": "discipline inputs",
+      "output_contract": "coordination issues",
+      "fallback": "return missing inputs",
+      "handoff": "route issues to owners",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "word-checker",
+      "permission_class": "ro",
+      "required_capabilities": [
+        "core.files.read",
+        "document.word.read"
+      ],
+      "optional_capabilities": [],
+      "input_contract": "DOCX and checklist",
+      "output_contract": "document QA",
+      "fallback": "report document runtime unavailable",
+      "handoff": "return findings",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "designer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write",
+        "spreadsheet.write"
+      ],
+      "optional_capabilities": [
+        "web.search"
+      ],
+      "input_contract": "brief and inputs",
+      "output_contract": "editable artifacts",
+      "fallback": "return patch plan",
+      "handoff": "request independent audit",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "expertiza-responder",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write"
+      ],
+      "optional_capabilities": [
+        "pdf.read",
+        "web.search"
+      ],
+      "input_contract": "comments and evidence",
+      "output_contract": "response document",
+      "fallback": "return response draft",
+      "handoff": "request legal/technical review",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "id-engineer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write",
+        "spreadsheet.write"
+      ],
+      "optional_capabilities": [
+        "web.search"
+      ],
+      "input_contract": "ID source files",
+      "output_contract": "ID documents",
+      "fallback": "return structured draft",
+      "handoff": "request verifier",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "kp-writer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write"
+      ],
+      "optional_capabilities": [
+        "spreadsheet.read",
+        "web.search"
+      ],
+      "input_contract": "commercial inputs",
+      "output_contract": "editable proposal",
+      "fallback": "return text draft",
+      "handoff": "request owner review",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "letter-writer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write"
+      ],
+      "optional_capabilities": [],
+      "input_contract": "facts and addressee data",
+      "output_contract": "editable letter",
+      "fallback": "return text draft",
+      "handoff": "request owner approval",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "pto-engineer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "document.word.write",
+        "spreadsheet.write"
+      ],
+      "optional_capabilities": [
+        "pdf.read"
+      ],
+      "input_contract": "production sources",
+      "output_contract": "PTО artifact",
+      "fallback": "return structured draft",
+      "handoff": "request verifier",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "pyrevit-engineer",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "revit.inspect",
+        "revit.execute",
+        "revit.modify"
+      ],
+      "optional_capabilities": [],
+      "input_contract": "model task and safety scope",
+      "output_contract": "executed result or script",
+      "fallback": "return reviewed script without execution",
+      "handoff": "require live-model verification",
+      "verification": {
+        "claude": "blocked",
+        "codex": "blocked"
+      }
+    },
+    {
+      "role_id": "smetchik",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "spreadsheet.write"
+      ],
+      "optional_capabilities": [
+        "web.search"
+      ],
+      "input_contract": "estimate sources",
+      "output_contract": "editable estimate workbook",
+      "fallback": "return calculation table",
+      "handoff": "request price/source review",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    },
+    {
+      "role_id": "snabzhenets",
+      "permission_class": "rw",
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write",
+        "spreadsheet.write"
+      ],
+      "optional_capabilities": [
+        "pdf.read",
+        "web.search"
+      ],
+      "input_contract": "procurement demand",
+      "output_contract": "procurement workbook",
+      "fallback": "return procurement list",
+      "handoff": "request source review",
+      "verification": {
+        "claude": "static",
+        "codex": "static"
+      }
+    }
   ],
   "skill_adapters": [
-    {"skill_id":"excel-helper","activation":"manifest","trigger":"xlsx task","preconditions":["workbook path"],"required_capabilities":["spreadsheet.read","spreadsheet.write"],"fallback":"report spreadsheet runtime unavailable","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"word-helper","activation":"manifest","trigger":"docx task","preconditions":["document path"],"required_capabilities":["document.word.read","document.word.write"],"fallback":"return draft","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"doc-extract","activation":"manifest","trigger":"PDF extraction","preconditions":["PDF path"],"required_capabilities":["pdf.read","pdf.render"],"fallback":"report extraction unavailable","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"pdf-edit","activation":"manifest","trigger":"PDF edit","preconditions":["PDF path"],"required_capabilities":["pdf.read","pdf.render","pdf.write"],"fallback":"return edit plan","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"facts-layer","activation":"manifest","trigger":"project fact task","preconditions":["FACTS.md"],"required_capabilities":["core.files.read","core.files.write"],"fallback":"request source facts","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"project-memory","activation":"manifest","trigger":"project session","preconditions":["project root"],"required_capabilities":["core.files.read","core.files.write"],"fallback":"return missing-memory notice","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"domain-grilling","activation":"manifest","trigger":"underspecified construction task","preconditions":["user available"],"required_capabilities":["core.files.read"],"fallback":"ask bounded questions","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"karpathy-guidelines","activation":"manifest","trigger":"implementation task","preconditions":[],"required_capabilities":["core.files.read","core.shell.execute"],"fallback":"apply review checklist","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"handoff-to-new-chat","activation":"manifest","trigger":"context handoff","preconditions":["state files"],"required_capabilities":["core.files.read","core.files.write"],"fallback":"return LITE prompt","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"live","evidence":"context governor smoke"}},
-    {"skill_id":"llm-interop","activation":"manifest","trigger":"cross-model delegation","preconditions":["task contract"],"required_capabilities":["core.files.read","core.shell.execute"],"fallback":"return neutral JSON task","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"web-access","activation":"manifest","trigger":"web task","preconditions":["source query"],"required_capabilities":["web.search","web.fetch"],"fallback":"report unverified source","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"acad-recreation","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"AutoCAD runtime и Claude-MCP обвязка; включать после capability-адаптера","verification":{"status":"blocked"}},
-    {"skill_id":"cad-reader","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"сначала исправить невалидный YAML frontmatter и проверить CAD backend","verification":{"status":"blocked"}},
-    {"skill_id":"chains-pattern","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude-specific команды оркестрации; нужен нейтральный adapter","verification":{"status":"blocked"}},
-    {"skill_id":"co-verify","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"семантика переносима, но document capability ещё не обкатана в Эпике 5","verification":{"status":"blocked"}},
-    {"skill_id":"doc-finder","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["web.search"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен mapping веб-поиска и загрузки файлов","verification":{"status":"blocked"}},
-    {"skill_id":"graphify","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude Agent/hooks и битая ссылка на reference; сначала разделить core/adapter","verification":{"status":"blocked"}},
-    {"skill_id":"id-tom-priemka","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["pdf.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude Workflow/vision fan-out; нужен adapter ролей и PDF vision","verification":{"status":"blocked"}},
-    {"skill_id":"image-text-replace","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"тяжёлые локальные зависимости; нужен runtime smoke","verification":{"status":"blocked"}},
-    {"skill_id":"local-osint-recon","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.shell.execute"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"машинный Kali WSL и персональные пути","verification":{"status":"blocked"}},
-    {"skill_id":"local-video-digest","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"локальные media/Whisper зависимости; нужен runtime profile","verification":{"status":"blocked"}},
-    {"skill_id":"pd-tep-extractor","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["pdf.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен проверенный PDF extraction adapter","verification":{"status":"blocked"}},
-    {"skill_id":"pnr-vor-helper","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["document.word.read","spreadsheet.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен совместный DOCX/XLSX test-drive","verification":{"status":"blocked"}},
-    {"skill_id":"revit-family-generator","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["revit.execute"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"внешний Revit runtime; включать по доменному профилю","verification":{"status":"blocked"}},
-    {"skill_id":"revit-family-generator-ru","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["revit.execute"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"локальный Revit/famfab pipeline; включать по доменному профилю","verification":{"status":"blocked"}},
-    {"skill_id":"revit-testbed","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["revit.inspect"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"живой Revit-стенд; только доменный профиль","verification":{"status":"blocked"}},
-    {"skill_id":"ru-gov-access","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["web.fetch"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"host/network-specific доступ; нужен capability fallback","verification":{"status":"blocked"}},
-    {"skill_id":"skill-development","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.write"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"конфликт producer/consumer политики правки общей базы","verification":{"status":"blocked"}},
-    {"skill_id":"spec-writer","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["document.word.write"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен проверенный document adapter","verification":{"status":"blocked"}},
-    {"skill_id":"stroy-formatting","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["document.word.write"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude AskUserQuestion и внешние formatting templates","verification":{"status":"blocked"}},
-    {"skill_id":"structured-artifacts","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.write"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"переносим; включить после trigger forward-test","verification":{"status":"blocked"}},
-    {"skill_id":"supervisor","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude Agent SDK и remote-control; оставить Claude-only","verification":{"status":"blocked"}},
-    {"skill_id":"supplier-due-diligence","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["web.search","document.word.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен web/document capability mapping","verification":{"status":"blocked"}},
-    {"skill_id":"svor-vor-works-base","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"переносим; включить после domain forward-test","verification":{"status":"blocked"}},
-    {"skill_id":"understanding-map","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude Desktop/widget/Artifacts specific","verification":{"status":"blocked"}},
-    {"skill_id":"upd-parser","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["pdf.read","spreadsheet.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"нужен PDF/XLSX capability test-drive","verification":{"status":"blocked"}},
-    {"skill_id":"yandex-disk-uploader","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.write"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"локальная .env и организационная структура архива","verification":{"status":"blocked"}},
-    {"skill_id":"codex-bridge","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"управление мостом со стороны Claude; Codex — вторая сторона моста, скилл ему не нужен","verification":{"status":"blocked"}},
-    {"skill_id":"document-quality-gate","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"Claude-процедура сдачи; зависит от PDF-экспортёра, которого нет в базе (ревизия 2026-08-26)","verification":{"status":"blocked"}},
-    {"skill_id":"ru-writing-style","activation":"manifest","trigger":"russian prose task","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"write without style layer","optional_capabilities":[],"manifest_state":"enabled","verification":{"status":"static"}},
-    {"skill_id":"sync-base","activation":"manifest","trigger":"skipped","preconditions":[],"required_capabilities":["core.files.read"],"fallback":"preserve manifest skip","optional_capabilities":[],"manifest_state":"skipped","skip_reason":"управление релизами claude-base; Codex базу не обновляет","verification":{"status":"blocked"}}
+    {
+      "skill_id": "excel-helper",
+      "activation": "manifest",
+      "trigger": "xlsx task",
+      "preconditions": [
+        "workbook path"
+      ],
+      "required_capabilities": [
+        "spreadsheet.read",
+        "spreadsheet.write"
+      ],
+      "fallback": "report spreadsheet runtime unavailable",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "word-helper",
+      "activation": "manifest",
+      "trigger": "docx task",
+      "preconditions": [
+        "document path"
+      ],
+      "required_capabilities": [
+        "document.word.read",
+        "document.word.write"
+      ],
+      "fallback": "return draft",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "doc-extract",
+      "activation": "manifest",
+      "trigger": "PDF extraction",
+      "preconditions": [
+        "PDF path"
+      ],
+      "required_capabilities": [
+        "pdf.read",
+        "pdf.render"
+      ],
+      "fallback": "report extraction unavailable",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "pdf-edit",
+      "activation": "manifest",
+      "trigger": "PDF edit",
+      "preconditions": [
+        "PDF path"
+      ],
+      "required_capabilities": [
+        "pdf.read",
+        "pdf.render",
+        "pdf.write"
+      ],
+      "fallback": "return edit plan",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "facts-layer",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "verification": {
+        "status": "blocked"
+      },
+      "skip_reason": "поставляется project-controls@personal"
+    },
+    {
+      "skill_id": "project-memory",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "verification": {
+        "status": "blocked"
+      },
+      "skip_reason": "поставляется project-controls@personal"
+    },
+    {
+      "skill_id": "domain-grilling",
+      "activation": "manifest",
+      "trigger": "underspecified construction task",
+      "preconditions": [
+        "user available"
+      ],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "ask bounded questions",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "karpathy-guidelines",
+      "activation": "manifest",
+      "trigger": "implementation task",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read",
+        "core.shell.execute"
+      ],
+      "fallback": "apply review checklist",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "handoff-to-new-chat",
+      "activation": "manifest",
+      "trigger": "context handoff",
+      "preconditions": [
+        "state files"
+      ],
+      "required_capabilities": [
+        "core.files.read",
+        "core.files.write"
+      ],
+      "fallback": "return LITE prompt",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "live",
+        "evidence": "context governor smoke"
+      }
+    },
+    {
+      "skill_id": "llm-interop",
+      "activation": "manifest",
+      "trigger": "cross-model delegation",
+      "preconditions": [
+        "task contract"
+      ],
+      "required_capabilities": [
+        "core.files.read",
+        "core.shell.execute"
+      ],
+      "fallback": "return neutral JSON task",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "web-access",
+      "activation": "manifest",
+      "trigger": "web task",
+      "preconditions": [
+        "source query"
+      ],
+      "required_capabilities": [
+        "web.search",
+        "web.fetch"
+      ],
+      "fallback": "report unverified source",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "acad-recreation",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "AutoCAD runtime и Claude-MCP обвязка; включать после capability-адаптера",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "cad-reader",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "сначала исправить невалидный YAML frontmatter и проверить CAD backend",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "chains-pattern",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "Claude-specific команды оркестрации; нужен нейтральный adapter",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "co-verify",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "поставляется project-controls@personal",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "doc-finder",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "web.search"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен mapping веб-поиска и загрузки файлов",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "graphify",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "Claude Agent/hooks и битая ссылка на reference; сначала разделить core/adapter",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "id-tom-priemka",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "pdf.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "Claude Workflow/vision fan-out; нужен adapter ролей и PDF vision",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "image-text-replace",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "тяжёлые локальные зависимости; нужен runtime smoke",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "local-osint-recon",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.shell.execute"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "машинный Kali WSL и персональные пути",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "local-video-digest",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "локальные media/Whisper зависимости; нужен runtime profile",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "pd-tep-extractor",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "pdf.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен проверенный PDF extraction adapter",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "pnr-vor-helper",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "document.word.read",
+        "spreadsheet.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен совместный DOCX/XLSX test-drive",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "revit-family-generator",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "revit.execute"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "внешний Revit runtime; включать по доменному профилю",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "revit-family-generator-ru",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "revit.execute"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "локальный Revit/famfab pipeline; включать по доменному профилю",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "revit-testbed",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "revit.inspect"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "живой Revit-стенд; только доменный профиль",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "ru-gov-access",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "web.fetch"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "host/network-specific доступ; нужен capability fallback",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "skill-development",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "конфликт producer/consumer политики правки общей базы",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "spec-writer",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "document.word.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен проверенный document adapter",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "stroy-formatting",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "document.word.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "Claude AskUserQuestion и внешние formatting templates",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "structured-artifacts",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "переносим; включить после trigger forward-test",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "supervisor",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "Claude Agent SDK и remote-control; оставить Claude-only",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "supplier-due-diligence",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "web.search",
+        "document.word.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен web/document capability mapping",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "svor-vor-works-base",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "переносим; включить после domain forward-test",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "understanding-map",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "поставляется project-controls@personal",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "upd-parser",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "pdf.read",
+        "spreadsheet.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "нужен PDF/XLSX capability test-drive",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "yandex-disk-uploader",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.write"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "локальная .env и организационная структура архива",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "codex-bridge",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "управление мостом со стороны Claude; Codex — вторая сторона моста, скилл ему не нужен",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "document-quality-gate",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "поставляется project-controls@personal",
+      "verification": {
+        "status": "blocked"
+      }
+    },
+    {
+      "skill_id": "ru-writing-style",
+      "activation": "manifest",
+      "trigger": "russian prose task",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "write without style layer",
+      "optional_capabilities": [],
+      "manifest_state": "enabled",
+      "verification": {
+        "status": "static"
+      }
+    },
+    {
+      "skill_id": "sync-base",
+      "activation": "manifest",
+      "trigger": "skipped",
+      "preconditions": [],
+      "required_capabilities": [
+        "core.files.read"
+      ],
+      "fallback": "preserve manifest skip",
+      "optional_capabilities": [],
+      "manifest_state": "skipped",
+      "skip_reason": "управление релизами claude-base; Codex базу не обновляет",
+      "verification": {
+        "status": "blocked"
+      }
+    }
   ]
 }

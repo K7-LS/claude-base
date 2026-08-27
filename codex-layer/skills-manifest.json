@@ -1,17 +1,24 @@
 {
   "enable": [
-    "excel-helper", "word-helper", "doc-extract", "pdf-edit",
-    "facts-layer", "project-memory", "domain-grilling", "karpathy-guidelines",
-    "handoff-to-new-chat", "llm-interop", "web-access", "ru-writing-style"
+    "excel-helper",
+    "word-helper",
+    "doc-extract",
+    "pdf-edit",
+    "domain-grilling",
+    "karpathy-guidelines",
+    "handoff-to-new-chat",
+    "llm-interop",
+    "web-access",
+    "ru-writing-style"
   ],
   "skip_reason": {
     "acad-recreation": "AutoCAD runtime и Claude-MCP обвязка; включать после capability-адаптера",
     "codex-bridge": "управление мостом со стороны Claude; Codex — вторая сторона моста, скилл ему не нужен",
-    "document-quality-gate": "Claude-процедура сдачи; зависит от PDF-экспортёра, которого нет в базе (ревизия 2026-08-26)",
+    "document-quality-gate": "поставляется project-controls@personal",
     "sync-base": "управление релизами claude-base; Codex базу не обновляет",
     "cad-reader": "сначала исправить невалидный YAML frontmatter и проверить CAD backend",
     "chains-pattern": "Claude-specific команды оркестрации; нужен нейтральный adapter",
-    "co-verify": "семантика переносима, но document capability ещё не обкатана в Эпике 5",
+    "co-verify": "поставляется project-controls@personal",
     "doc-finder": "нужен mapping веб-поиска и загрузки файлов",
     "graphify": "Claude Agent/hooks и битая ссылка на reference; сначала разделить core/adapter",
     "id-tom-priemka": "Claude Workflow/vision fan-out; нужен adapter ролей и PDF vision",
@@ -31,8 +38,10 @@
     "supervisor": "Claude Agent SDK и remote-control; оставить Claude-only",
     "supplier-due-diligence": "нужен web/document capability mapping",
     "svor-vor-works-base": "переносим; включить после domain forward-test",
-    "understanding-map": "Claude Desktop/widget/Artifacts specific",
+    "understanding-map": "поставляется project-controls@personal",
     "upd-parser": "нужен PDF/XLSX capability test-drive",
-    "yandex-disk-uploader": "локальная .env и организационная структура архива"
+    "yandex-disk-uploader": "локальная .env и организационная структура архива",
+    "facts-layer": "поставляется project-controls@personal",
+    "project-memory": "поставляется project-controls@personal"
   }
 }

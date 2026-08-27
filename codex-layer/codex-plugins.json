@@ -1,17 +1,23 @@
 {
-  "comment": "Состав фокусных плагинов Codex (волна Б реворка, вердикт Codex 2026-08-26). Сборка: python scripts/build_codex_plugins.py — копирует скиллы из канона ~/.claude/skills в ~/plugins/<name> и регистрирует в personal marketplace. Пересечения с bim-cad-workflows (svor-vor-works-base, structured-artifacts, co-verify) не включены — пере-нарезка за Codex.",
+  "comment": "Состав фокусных плагинов Codex (нарезка 0.2.0 — приёмка Codex 2026-08-27, отчёты/2026-08-27-приёмка-плагинов.md). Сборка: python scripts/build_codex_plugins.py — копирует скиллы из канона ~/.claude/skills в ~/plugins/<name> и регистрирует в personal marketplace. После пересборки установленных пакетов — cachebuster + codex plugin add (см. план cutover в отчёте).",
   "plugins": {
+    "bim-cad-workflows": {
+      "version": "0.2.0",
+      "displayName": "BIM CAD Workflows",
+      "description": "CAD/Revit-workflow: воссоздание DWG, генерация семейств Revit и живой стенд приёмки.",
+      "skills": ["acad-recreation", "revit-family-generator", "revit-family-generator-ru", "revit-testbed"]
+    },
     "construction-documents": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "displayName": "Construction Documents",
-      "description": "ИД, ПНР, УПД, спецификации и постраничная приёмка томов — документные workflow строительной базы.",
-      "skills": ["id-tom-priemka", "pnr-vor-helper", "upd-parser", "spec-writer"]
+      "description": "ИД, ПНР, УПД, спецификации, СВОР/ВОР и постраничная приёмка томов — документные workflow строительной базы.",
+      "skills": ["id-tom-priemka", "pnr-vor-helper", "upd-parser", "spec-writer", "structured-artifacts", "svor-vor-works-base"]
     },
     "project-controls": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "displayName": "Project Controls",
-      "description": "Память проекта, слой фактов, карта понимания и независимые quality-гейты.",
-      "skills": ["facts-layer", "project-memory", "understanding-map", "document-quality-gate"]
+      "description": "Память проекта, слой фактов, карта понимания, сверка спецификаций и независимые quality-гейты.",
+      "skills": ["facts-layer", "project-memory", "understanding-map", "document-quality-gate", "co-verify"]
     }
   }
 }
