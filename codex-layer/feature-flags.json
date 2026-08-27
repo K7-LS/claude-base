@@ -1,0 +1,6 @@
+{
+  "comment": "Обязательные feature-флаги Codex для всех пользователей базы. codex_sync вписывает отсутствующие ключи в СУЩЕСТВУЮЩУЮ таблицу [features] config.toml (вторая таблица запрещена TOML). Значение, явно выставленное пользователем, не перетирается. default_mode_request_user_input: вопросы посреди задачи в Default mode — проверено вживую в Desktop 26.820.7780.0 / CLI 0.144.4 (2026-08-27).",
+  "features": {
+    "default_mode_request_user_input": true
+  }
+}

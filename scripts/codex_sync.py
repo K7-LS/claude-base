@@ -718,6 +718,60 @@ def _write_atomic(p: Path, text: str) -> None:
     finally:
         tmp.unlink(missing_ok=True)
 
+def ensure_feature_flags(home: Path) -> bool:
+    """Вписывает обязательные ключи из codex-layer/feature-flags.json в
+    СУЩЕСТВУЮЩУЮ таблицу [features] ~/.codex/config.toml (вторая таблица
+    запрещена TOML). Только отсутствующие ключи: явное значение пользователя
+    не перетирается. Возвращает True, если файл менялся."""
+    flags_path = home / ".claude" / "codex-layer" / "feature-flags.json"
+    cfg = home / ".codex" / "config.toml"
+    if not flags_path.exists() or not cfg.exists():
+        return False
+    try:
+        flags = json.loads(flags_path.read_text(encoding="utf-8")).get("features", {})
+    except ValueError:
+        print("[codex_sync] warn: feature-flags.json невалиден — пропущен", file=sys.stderr)
+        return False
+    if not flags:
+        return False
+
+    def fmt(v):
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, (int, float)):
+            return str(v)
+        return '"' + str(v) + '"'
+
+    lines = cfg.read_text(encoding="utf-8").splitlines(keepends=True)
+    start = next((i for i, ln in enumerate(lines)
+                  if re.match(r"\s*\[features\]\s*$", ln)), None)
+    if start is None:
+        add = ["\n[features]\n"] + [f"{k} = {fmt(v)}\n" for k, v in flags.items()]
+        new_lines = lines + add
+    else:
+        end = next((j for j in range(start + 1, len(lines))
+                    if re.match(r"\s*\[", lines[j])), len(lines))
+        present = set()
+        for j in range(start + 1, end):
+            m = re.match(r"\s*([A-Za-z0-9_.-]+)\s*=", lines[j])
+            if m:
+                present.add(m.group(1))
+        add = [f"{k} = {fmt(v)}\n" for k, v in flags.items() if k not in present]
+        if not add:
+            return False
+        new_lines = lines[:start + 1] + add + lines[start + 1:]
+    new_text = "".join(new_lines)
+    try:
+        tomllib.loads(new_text)
+    except tomllib.TOMLDecodeError as e:
+        print(f"[codex_sync] error: feature-flags сделали config.toml невалидным — не записано: {e}",
+              file=sys.stderr)
+        return False
+    _write_atomic(cfg, new_text)
+    print(f"[codex_sync] feature-flags: добавлено {len(add)} ключ(а) в [features]")
+    return True
+
+
 def sync(home: Path, force=None, dry_run: bool = False) -> int:
     """Drift-aware сборка ~/.codex из канона ~/.claude.
 
@@ -762,6 +816,7 @@ def sync(home: Path, force=None, dry_run: bool = False) -> int:
         else:
             _write_atomic(p, rendered[key])
     ensure_skill_junctions(manifest, claude / "skills", home / ".agents" / "skills")
+    ensure_feature_flags(home)
     # манифест: записанное/чистое = ожидаемый хеш; пропущенный дрейф (ручной или гейт-ошибка) = прежнее значение
     old = (load_manifest(home) or {}).get("outputs", {})
     unwritten = set(skipped) | ({"config.toml#managed"} if build_error else set())
