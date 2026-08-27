@@ -1,0 +1,17 @@
+{
+  "comment": "Состав фокусных плагинов Codex (волна Б реворка, вердикт Codex 2026-08-26). Сборка: python scripts/build_codex_plugins.py — копирует скиллы из канона ~/.claude/skills в ~/plugins/<name> и регистрирует в personal marketplace. Пересечения с bim-cad-workflows (svor-vor-works-base, structured-artifacts, co-verify) не включены — пере-нарезка за Codex.",
+  "plugins": {
+    "construction-documents": {
+      "version": "0.1.0",
+      "displayName": "Construction Documents",
+      "description": "ИД, ПНР, УПД, спецификации и постраничная приёмка томов — документные workflow строительной базы.",
+      "skills": ["id-tom-priemka", "pnr-vor-helper", "upd-parser", "spec-writer"]
+    },
+    "project-controls": {
+      "version": "0.1.0",
+      "displayName": "Project Controls",
+      "description": "Память проекта, слой фактов, карта понимания и независимые quality-гейты.",
+      "skills": ["facts-layer", "project-memory", "understanding-map", "document-quality-gate"]
+    }
+  }
+}
