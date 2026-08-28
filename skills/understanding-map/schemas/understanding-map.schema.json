@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "k7:understanding-map:v1",
+  "title": "Understanding map (карта понимания), canonical schema v1",
+  "description": "Канонические данные карты понимания, хранимые в <selected-core>/understanding-map.json. Файл опционален: его отсутствие — норма, он не входит в признаки валидности ядра. Строки — plain text; HTML экранируют рендеры. Неизвестные поля читатели сохраняют при read-modify-write. Владелец схемы — плагин project-controls; изменение схемы — только зеркальным пакетом через мост (несовместимое — с бампом schema_version и мигратором dry-run → backup → apply).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "revision",
+    "goal",
+    "review_state",
+    "understanding",
+    "assumptions",
+    "gaps",
+    "decisions",
+    "sources",
+    "next_step"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Монотонное целое для compare-and-swap; пишет только map_store, несовпадение базовой ревизии — MAP_CONFLICT без автоматического merge."
+    },
+    "title": { "type": "string" },
+    "goal": { "type": "string", "minLength": 1 },
+    "review_state": { "enum": ["draft", "changes_requested", "confirmed"] },
+    "understanding": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" },
+      "description": "Понимание задачи (не второй слой фактов: факты проекта — в FACTS.md, отсюда только ссылки через source_ids)."
+    },
+    "assumptions": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "gaps": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/decision" },
+      "description": "Snapshot/ссылки на стабильные decision ID (долговечные — <core>/DECISIONS.md, рабочий журнал — _meta/DECISIONS.md); не третий журнал решений."
+    },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "next_step": {
+      "oneOf": [{ "$ref": "#/$defs/entry" }, { "type": "null" }]
+    },
+    "analysis_flow": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/flow_step" },
+      "description": "Опционально: ход разбора (наследник поля flow прежнего view-формата)."
+    },
+    "architecture": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/arch_layer" },
+      "description": "Опционально: слои архитектуры (наследник поля arch прежнего view-формата)."
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9А-Яа-яЁё][A-Za-z0-9А-Яа-яЁё0-9._-]{0,63}$",
+      "description": "Стабильный идентификатор записи; уникальность в пределах файла проверяет map_store."
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tag": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" },
+        "source_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/id" },
+          "description": "Ссылки на записи sources (в т.ч. на FACTS.md)."
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "ref": {
+          "type": "string",
+          "description": "Ссылка на стабильный decision ID, напр. 'DECISIONS.md#D-004' или '_meta/DECISIONS.md#R-012'."
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["id", "kind", "ref"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["file", "url", "doc", "chat", "other"] },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Локальные пути — относительно корня проекта; абсолютные URL — только при kind=url."
+        },
+        "locator": {
+          "type": "string",
+          "description": "Опционально: строка, пункт, лист, диапазон."
+        }
+      }
+    },
+    "flow_step": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "n": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" },
+        "turn": { "type": "boolean" }
+      }
+    },
+    "arch_layer": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "ln": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" }
+      }
+    }
+  }
+}
