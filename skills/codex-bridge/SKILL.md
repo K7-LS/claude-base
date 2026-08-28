@@ -61,6 +61,11 @@ Codex) — «поднимать» нужно только просмотр и п
   продолжается `codex-reply` по threadId рабочей сессии.
 - `codex exec --sandbox read-only` отменяет MCP-вызовы («user cancelled MCP tool
   call»); штатный режим Codex их пропускает.
+- **`codex-reply` теряет тред после рестарта MCP-сервера** («Session not found»,
+  хотя rollout цел — сессии живут в памяти сервера). НЕ повторяй MCP-вызов:
+  доставь в тот же тред через CLI `codex exec resume <threadId>
+  -c mcp_servers.claude.enabled=false` (cwd — рабочая папка треда); финал
+  дальше читается монитором rollout (проверено 2026-08-28, дважды).
 - Модель Codex может ложно ответить «MCP-серверов нет» — верь только реальному
   вызову инструмента.
 - После любой правки `~/.codex/hooks.json` Codex молча отключает ВСЕ свои хуки,
