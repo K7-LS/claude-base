@@ -124,6 +124,18 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "Start-Process -WindowStyle Hidden python -ArgumentList \"$HOME\\.claude\\scripts\\interop_chat_server.py\"",
+            "shell": "powershell",
+            "timeout": 10,
+            "async": true
+          }
+        ]
       }
     ],
     "SessionEnd": [
