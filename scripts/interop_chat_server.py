@@ -8,11 +8,82 @@
 Страница опрашивает /raw каждые 2 секунды и дорисовывает новые записи.
 """
 import http.server
+import json
 import socketserver
+import urllib.parse
 from pathlib import Path
 
 PORT = 7343
 JOURNAL = Path.home() / ".claude" / "interop" / "dialog.md"
+SESSIONS = Path.home() / ".codex" / "sessions"
+
+
+def list_sessions(limit: int = 40) -> list:
+    items = []
+    for f in SESSIONS.glob("*/*/*/rollout-*.jsonl"):
+        items.append(f)
+    items.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    out = []
+    for f in items[:limit]:
+        first_user, tokens = "", None
+        try:
+            with open(f, encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    try:
+                        p = json.loads(line).get("payload", {})
+                    except ValueError:
+                        continue
+                    t = p.get("type")
+                    if t == "user_message" and not first_user:
+                        first_user = (p.get("message") or "")[:200]
+                    elif t == "token_count":
+                        tokens = (p.get("info") or {}).get(
+                            "total_token_usage", {}).get("total_tokens", tokens)
+        except OSError:
+            continue
+        out.append({
+            "file": str(f.relative_to(SESSIONS)).replace("\\", "/"),
+            "name": f.stem.replace("rollout-", ""),
+            "mtime": f.stat().st_mtime,
+            "size": f.stat().st_size,
+            "first_user": first_user,
+            "tokens": tokens,
+        })
+    return out
+
+
+def parse_session(rel: str) -> list:
+    f = (SESSIONS / rel).resolve()
+    if SESSIONS.resolve() not in f.parents or f.suffix != ".jsonl" or not f.exists():
+        raise FileNotFoundError(rel)
+    steps = []
+
+    def clip(s, n):
+        s = (s or "").strip()
+        return s if len(s) <= n else s[:n] + "\n… [обрезано]"
+
+    with open(f, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            try:
+                p = json.loads(line).get("payload", {})
+            except ValueError:
+                continue
+            t = p.get("type")
+            if t == "user_message":
+                steps.append({"kind": "user", "text": clip(p.get("message"), 4000)})
+            elif t == "agent_message":
+                steps.append({"kind": "codex", "text": clip(p.get("message"), 4000)})
+            elif t == "custom_tool_call":
+                steps.append({"kind": "tool",
+                              "text": (p.get("name") or "tool") + ": " + clip(p.get("input"), 1500)})
+            elif t == "custom_tool_call_output":
+                out = p.get("output")
+                if isinstance(out, list):
+                    out = "\n".join(x.get("text", "") for x in out if isinstance(x, dict))
+                steps.append({"kind": "out", "text": clip(str(out), 1200)})
+            elif t == "task_complete":
+                steps.append({"kind": "done", "text": "task_complete"})
+    return steps
 
 PAGE = """<!doctype html>
 <html lang="ru">
@@ -53,6 +124,29 @@ PAGE = """<!doctype html>
   .wordmark .c2 { color: var(--codex); font-weight: 600; }
   .wordmark .x  { color: var(--dim); }
   .status { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+  .tabs { display: flex; gap: 14px; font-family: var(--mono); font-size: 12px; }
+  .tabs a { color: var(--dim); text-decoration: none; padding: 3px 2px; border-bottom: 2px solid transparent; }
+  .tabs a.on { color: var(--ink); border-bottom-color: var(--codex); }
+  .sess-row { position: relative; z-index: 1; display: block; padding: 10px 14px; margin: 8px 0;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    cursor: pointer; text-decoration: none; color: var(--ink); }
+  .sess-row:hover { border-color: color-mix(in srgb, var(--codex) 40%, var(--line)); }
+  .sess-row .id { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .sess-row .fu { font-size: 13px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #alt.feed::before { display: none; }
+  .step { position: relative; z-index: 1; margin: 10px 0; }
+  .step .bubble { max-width: 76%; }
+  .step.user .bubble { margin-left: auto; background: var(--claude-tint);
+    border-color: color-mix(in srgb, var(--claude) 30%, var(--line)); }
+  .step.codex .bubble { margin-right: auto; background: var(--codex-tint);
+    border-color: color-mix(in srgb, var(--codex) 30%, var(--line)); }
+  .step .tg { width: min(92%, 680px); margin: 0 auto; font-family: var(--mono);
+    font-size: 11.5px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 11px; white-space: pre-wrap; overflow-wrap: break-word; color: var(--dim); }
+  .step.done .tg { color: #4ade80; text-align: center; }
+  .backlink { position: relative; z-index: 1; display: inline-block; margin: 6px 0 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--codex); text-decoration: none; }
   .pulse { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
   .pulse.live { animation: pulse 2s ease-in-out infinite; }
   .pulse.dead { background: #f87171; animation: none; }
@@ -158,9 +252,11 @@ PAGE = """<!doctype html>
 <body>
 <header>
   <div class="wordmark"><span class="c1">CLAUDE</span><span class="x">⇄</span><span class="c2">CODEX</span><span class="x">· мост</span></div>
+  <nav class="tabs"><a href="#" id="tab-feed" class="on">переписка</a><a href="#sessions" id="tab-sess">сессии Codex</a></nav>
   <div class="status"><span id="dot" class="pulse"></span><span id="stat">подключение…</span></div>
 </header>
 <main class="feed" id="feed"></main>
+<main class="feed" id="alt" hidden></main>
 <button id="newpill" type="button">новые записи ↓</button>
 
 <script>
@@ -301,7 +397,57 @@ async function tick() {
     stat.textContent = "сервер недоступен";
   }
 }
-tick().then(() => window.scrollTo({ top: document.body.scrollHeight }));
+// --- вкладка «сессии Codex»: полный разбор rollout-файлов ---
+const alt = document.getElementById("alt");
+const tabFeed = document.getElementById("tab-feed");
+const tabSess = document.getElementById("tab-sess");
+function setView() {
+  const h = location.hash;
+  const inAlt = h === "#sessions" || h.startsWith("#s=");
+  feed.hidden = inAlt; alt.hidden = !inAlt; pill.classList.remove("show");
+  tabFeed.classList.toggle("on", !inAlt);
+  tabSess.classList.toggle("on", inAlt);
+  if (h.startsWith("#s=")) loadSession(decodeURIComponent(h.slice(3)));
+  else if (h === "#sessions") loadSessions();
+}
+window.addEventListener("hashchange", setView);
+async function loadSessions() {
+  alt.innerHTML = '<div class="empty">загрузка…</div>';
+  const list = await (await fetch("/sessions")).json();
+  alt.innerHTML = "";
+  for (const s of list) {
+    const a = document.createElement("a");
+    a.className = "sess-row";
+    a.href = "#s=" + encodeURIComponent(s.file);
+    const dt = new Date(s.mtime * 1000).toLocaleString("ru-RU");
+    a.innerHTML = '<div class="id">' + esc(s.name) + " · " + dt +
+      (s.tokens ? " · " + Math.round(s.tokens / 1000) + "k токенов" : "") + "</div>" +
+      '<div class="fu">' + esc(s.first_user || "(без пользовательских сообщений)") + "</div>";
+    alt.appendChild(a);
+  }
+  if (!list.length) alt.innerHTML = '<div class="empty">Сессий Codex за последние дни нет.</div>';
+}
+async function loadSession(f) {
+  alt.innerHTML = '<div class="empty">загрузка…</div>';
+  const steps = await (await fetch("/session?f=" + encodeURIComponent(f))).json();
+  alt.innerHTML = '<a class="backlink" href="#sessions">← все сессии</a>';
+  for (const st of steps) {
+    const div = document.createElement("div");
+    div.className = "step " + st.kind;
+    if (st.kind === "user" || st.kind === "codex") {
+      div.innerHTML = '<div class="bubble"><span class="speaker s-' +
+        (st.kind === "user" ? "claude" : "codex") + '">' +
+        (st.kind === "user" ? "ЗАПРОС" : "CODEX") + "</span>" + esc(st.text) + "</div>";
+    } else {
+      div.innerHTML = '<div class="tg">' + esc(st.text) + "</div>";
+    }
+    alt.appendChild(div);
+  }
+  window.scrollTo({ top: 0 });
+}
+setView();
+
+tick().then(() => { if (!location.hash) window.scrollTo({ top: document.body.scrollHeight }); });
 setInterval(tick, 2000);
 </script>
 </body>
@@ -320,6 +466,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except OSError:
                 body = b""
             ctype = "text/plain; charset=utf-8"
+        elif self.path == "/sessions":
+            body = json.dumps(list_sessions(), ensure_ascii=False).encode("utf-8")
+            ctype = "application/json; charset=utf-8"
+        elif self.path.startswith("/session?"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                steps = parse_session(q.get("f", [""])[0])
+            except (FileNotFoundError, OSError):
+                self.send_error(404)
+                return
+            body = json.dumps(steps, ensure_ascii=False).encode("utf-8")
+            ctype = "application/json; charset=utf-8"
         else:
             self.send_error(404)
             return
