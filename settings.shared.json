@@ -54,7 +54,7 @@
           },
           {
             "type": "command",
-            "command": "& \"$HOME\\.claude\\base\\runtime\\hooks\\check-release.ps1\"",
+            "command": "& \"$HOME\\.claude\\scripts\\check-release-wrapper.ps1\"",
             "shell": "powershell",
             "timeout": 40
           },
@@ -95,7 +95,7 @@
           },
           {
             "type": "command",
-            "command": "& \"$HOME\\.claude\\base\\runtime\\hooks\\check-release.ps1\"",
+            "command": "& \"$HOME\\.claude\\scripts\\check-release-wrapper.ps1\"",
             "shell": "powershell",
             "timeout": 40
           },
