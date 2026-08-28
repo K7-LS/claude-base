@@ -72,9 +72,22 @@ def is_canonical(d) -> bool:
     return isinstance(d, dict) and "schema_version" in d
 
 
+def canonical_escaped(d):
+    """ОБЩИЙ безопасный адаптер всех режимов: канон — plain text, все строки
+    экранируются здесь один раз (widget/standalone/markdown), разметка не
+    интерпретируется."""
+    if isinstance(d, str):
+        return html.escape(d)
+    if isinstance(d, list):
+        return [canonical_escaped(x) for x in d]
+    if isinstance(d, dict):
+        return {k: canonical_escaped(v) for k, v in d.items()}
+    return d
+
+
 def _E(v) -> str:
-    """Канон — plain text: экранируем ВСЁ, разметка не интерпретируется."""
-    return html.escape(str(v)) if isinstance(v, str) and v else ""
+    """Строка уже экранированного канона → view-значение ('' для пустых)."""
+    return v if isinstance(v, str) and v else ""
 
 
 def _entry_detail(entry) -> str:
@@ -87,7 +100,9 @@ def _entry_detail(entry) -> str:
 
 
 def canonical_to_view(d: dict) -> dict:
-    """Канон v1 → legacy view-формат рендеров. Единственная точка экранирования."""
+    """Канон v1 → legacy view-формат рендеров (через canonical_escaped)."""
+    d = canonical_escaped(d)
+
     def entries(section, zone):
         return [{
             "zone": zone,
@@ -506,7 +521,9 @@ def _md_entries(lines, heading, entries):
 
 
 def build_markdown(d: dict) -> str:
-    """Канонический JSON → markdown. Plain text, без HTML."""
+    """Канонический JSON → markdown, через общий безопасный адаптер:
+    markdown часто рендерится как HTML — сырые теги канона не пропускаются."""
+    d = canonical_escaped(d)
     state = d.get("review_state", "draft")
     lines = [
         f"# {d.get('title') or 'Карта понимания'}",

@@ -42,6 +42,7 @@ SOURCE_KINDS = ("file", "url", "doc", "chat", "other")
 REQUIRED = ("schema_version", "revision", "goal", "review_state",
             "understanding", "assumptions", "gaps", "decisions",
             "sources", "next_step")
+KNOWN_V1_KEYS = frozenset(REQUIRED) | {"title", "analysis_flow", "architecture"}
 
 
 def _err(errors, path, msg):
@@ -60,13 +61,16 @@ def _check_entry(errors, path, entry, known_source_ids=None):
     for opt in ("tag", "detail"):
         if opt in entry and not isinstance(entry[opt], str):
             _err(errors, path, f"поле '{opt}' должно быть строкой")
-    sids = entry.get("source_ids", [])
-    if sids is not None and not isinstance(sids, list):
-        _err(errors, path, "source_ids должен быть списком")
-    elif known_source_ids is not None:
-        for sid in sids or []:
-            if sid not in known_source_ids:
-                _err(errors, path, f"source_ids ссылается на неизвестный источник {sid!r}")
+    if "source_ids" in entry:
+        sids = entry["source_ids"]
+        if not isinstance(sids, list):
+            _err(errors, path, "source_ids должен быть списком строк")
+        else:
+            for j, sid in enumerate(sids):
+                if not isinstance(sid, str) or not ID_RE.fullmatch(sid):
+                    _err(errors, path, f"source_ids[{j}]: ожидался валидный строковый id")
+                elif known_source_ids is not None and sid not in known_source_ids:
+                    _err(errors, path, f"source_ids ссылается на неизвестный источник {sid!r}")
     return entry.get("id")
 
 
@@ -116,7 +120,7 @@ def validate_map(data) -> list:
                 _err(errors, path, "обязательное строковое поле 'ref'")
             elif src.get("kind") == "file":
                 normalized = ref.replace("\\", "/")
-                if re.match(r"^([A-Za-z]:/|/|\\\\)", ref) or normalized.startswith("//"):
+                if re.match(r"^([A-Za-z]:/|/)", normalized):
                     _err(errors, path, "локальный путь должен быть относительным")
             if "locator" in src and not isinstance(src["locator"], str):
                 _err(errors, path, "locator должен быть строкой")
@@ -151,7 +155,11 @@ def validate_map(data) -> list:
 
     ns = data["next_step"]
     if ns is not None:
-        _check_entry(errors, "next_step", ns, known_sources)
+        eid = _check_entry(errors, "next_step", ns, known_sources)
+        if eid:
+            if eid in seen_ids:
+                _err(errors, "next_step", f"дубль id {eid!r}")
+            seen_ids.add(eid)
 
     for section, req_field in (("analysis_flow", "title"), ("architecture", "title")):
         if section not in data:
@@ -187,6 +195,24 @@ def read_disk(core: Path):
 def _emit(payload, code=0):
     sys.stdout.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     return code
+
+
+def _conflict_diff(disk, new):
+    """Краткий diff disk ↔ incoming для MAP_CONFLICT: явный выбор — за человеком."""
+    diff = {}
+    for key in ("title", "goal", "review_state", "next_step"):
+        if disk.get(key) != new.get(key):
+            diff[key] = {"disk": disk.get(key), "incoming": new.get(key)}
+    for section in ("understanding", "assumptions", "gaps", "decisions", "sources"):
+        d_rows = {e.get("id"): e for e in disk.get(section) or [] if isinstance(e, dict)}
+        n_rows = {e.get("id"): e for e in new.get(section) or [] if isinstance(e, dict)}
+        added = sorted(str(i) for i in n_rows.keys() - d_rows.keys())
+        removed = sorted(str(i) for i in d_rows.keys() - n_rows.keys())
+        changed = sorted(str(i) for i in n_rows.keys() & d_rows.keys()
+                         if n_rows[i] != d_rows[i])
+        if added or removed or changed:
+            diff[section] = {"added": added, "removed": removed, "changed": changed}
+    return diff
 
 
 def cmd_read(core: Path) -> int:
@@ -226,11 +252,19 @@ def _prepare(core: Path, data_path: Path, base_revision):
     disk_rev = disk.get("revision")
     if base_revision is None:
         return {"status": "MAP_CONFLICT", "reason": "карта уже существует — "
-                "нужен --base-revision (CAS)", "disk_revision": disk_rev}, 3, None
+                "нужен --base-revision (CAS)", "disk_revision": disk_rev,
+                "diff": _conflict_diff(disk, new_doc),
+                "hint": "перечитайте карту, объедините ЯВНО и повторите"}, 3, None
     if disk_rev != base_revision:
         return {"status": "MAP_CONFLICT", "reason": "ревизия на диске изменилась",
                 "disk_revision": disk_rev, "base_revision": base_revision,
+                "diff": _conflict_diff(disk, new_doc),
                 "hint": "перечитайте карту, объедините ЯВНО и повторите"}, 3, None
+    # rule (б): неизвестные будущие поля disk-документа, которые вход не
+    # переопределил, переносятся при read-modify-write, а не теряются.
+    for key, value in disk.items():
+        if key not in KNOWN_V1_KEYS and key not in new_doc:
+            new_doc[key] = value
     new_doc["revision"] = base_revision + 1
     return {"status": "READY", "action": "update", "base_revision": base_revision,
             "new_revision": base_revision + 1}, 0, new_doc
@@ -248,23 +282,42 @@ def cmd_plan(core: Path, data_path: Path, base_revision) -> int:
 
 
 def cmd_apply(core: Path, data_path: Path, base_revision) -> int:
-    result, code, new_doc = _prepare(core, data_path, base_revision)
+    # Быстрая проверка входа без лока: ошибки валидации не требуют блокировки.
+    result, code, _ = _prepare(core, data_path, base_revision)
     if code != 0:
         return _emit(result, code)
     target = map_path(core)
     target.parent.mkdir(parents=True, exist_ok=True)
-    if result["action"] == "update":
-        backup = target.with_name(f"{MAP_NAME}.bak-rev{result['base_revision']}")
-        if not backup.exists():
-            backup.write_bytes(target.read_bytes())
-        result["backup"] = str(backup)
-    tmp = target.with_name(target.name + ".tmp-map-store")
+    # Межпроцессная блокировка: эксклюзивное создание lock-файла; проверка
+    # ревизии повторяется ПОД локом — окно check→replace закрыто.
+    lock = target.with_name(MAP_NAME + ".lock-map-store")
     try:
-        tmp.write_text(json.dumps(new_doc, ensure_ascii=False, indent=2) + "\n",
-                       encoding="utf-8", newline="\n")
-        os.replace(tmp, target)
+        lock_fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return _emit({"status": "MAP_CONFLICT",
+                      "reason": "карта заблокирована другим writer",
+                      "lock": str(lock),
+                      "hint": "дождитесь завершения; осиротевший lock "
+                              "удаляется вручную осознанно"}, 3)
+    try:
+        os.close(lock_fd)
+        result, code, new_doc = _prepare(core, data_path, base_revision)
+        if code != 0:
+            return _emit(result, code)
+        if result["action"] == "update":
+            backup = target.with_name(f"{MAP_NAME}.bak-rev{result['base_revision']}")
+            if not backup.exists():
+                backup.write_bytes(target.read_bytes())
+            result["backup"] = str(backup)
+        tmp = target.with_name(f"{target.name}.tmp-map-store-{os.getpid()}")
+        try:
+            tmp.write_text(json.dumps(new_doc, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8", newline="\n")
+            os.replace(tmp, target)
+        finally:
+            tmp.unlink(missing_ok=True)
     finally:
-        tmp.unlink(missing_ok=True)
+        lock.unlink(missing_ok=True)
     result["status"] = "APPLIED"
     result["path"] = str(target)
     return _emit(result, 0)

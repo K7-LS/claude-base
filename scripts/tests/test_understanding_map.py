@@ -46,6 +46,12 @@ def test_sample_matches_json_schema_when_jsonschema_available():
     (lambda d: d["sources"].append(
         {"id": "s3", "kind": "file", "ref": "C:/абсолютный/путь.md"}), "относительным"),
     (lambda d: d.update(revision=0), "revision"),
+    # Приёмка Codex 2026-08-28, расхождения 1-3:
+    (lambda d: d["understanding"][0].update(source_ids=None), "списком строк"),
+    (lambda d: d["understanding"][0].update(source_ids=[{}]), "строковый id"),
+    (lambda d: d["sources"].append(
+        {"id": "s3", "kind": "file", "ref": "C:\\абсолютный\\путь.md"}), "относительным"),
+    (lambda d: d.update(next_step={"id": "u1", "title": "дубль next_step"}), "дубль"),
 ])
 def test_validate_map_rejects_contract_violations(mutate, fragment):
     doc = _sample()
@@ -106,7 +112,56 @@ def test_create_update_cas_backup_atomic(tmp_path, capsys):
     backup = tmp_path / "understanding-map.json.bak-rev1"
     assert backup.exists()
     assert json.loads(backup.read_text(encoding="utf-8"))["revision"] == 1
-    assert not list(tmp_path.glob("*.tmp-map-store"))
+    assert not list(tmp_path.glob("*.tmp-map-store*"))
+    assert not list(tmp_path.glob("*.lock-map-store"))
+
+
+def test_map_conflict_reports_diff(tmp_path, capsys):
+    data = _write_data(tmp_path, _sample())
+    assert map_store.cmd_apply(tmp_path, data, None) == 0
+    capsys.readouterr()
+    doc2 = _sample()
+    doc2["goal"] = "Другая цель"
+    doc2["gaps"] = []
+    doc2["understanding"][0]["title"] = "Изменённый пункт"
+    data2 = _write_data(tmp_path, doc2, "new2.json")
+    assert map_store.cmd_apply(tmp_path, data2, 7) == 3
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "MAP_CONFLICT"
+    diff = out["diff"]
+    assert diff["goal"]["incoming"] == "Другая цель"
+    assert diff["gaps"]["removed"] == ["g1"]
+    assert diff["understanding"]["changed"] == ["u1"]
+
+
+def test_apply_is_blocked_by_foreign_lock(tmp_path, capsys):
+    data = _write_data(tmp_path, _sample())
+    lock = tmp_path / "understanding-map.json.lock-map-store"
+    lock.write_text("", encoding="utf-8")
+    assert map_store.cmd_apply(tmp_path, data, None) == 3
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "MAP_CONFLICT" and "заблокирована" in out["reason"]
+    assert not (tmp_path / "understanding-map.json").exists()
+    lock.unlink()
+    assert map_store.cmd_apply(tmp_path, data, None) == 0
+    capsys.readouterr()
+    assert not lock.exists()                       # лок снят после apply
+
+
+def test_update_carries_disk_only_unknown_fields(tmp_path, capsys):
+    doc = _sample()
+    doc["x_future"] = {"из": "будущей схемы"}
+    data = _write_data(tmp_path, doc)
+    assert map_store.cmd_apply(tmp_path, data, None) == 0
+    capsys.readouterr()
+    doc2 = _sample()                               # входной документ поля не знает
+    data2 = _write_data(tmp_path, doc2, "new2.json")
+    assert map_store.cmd_apply(tmp_path, data2, 1) == 0
+    capsys.readouterr()
+    written = json.loads(
+        (tmp_path / "understanding-map.json").read_text(encoding="utf-8"))
+    assert written["x_future"] == {"из": "будущей схемы"}
+    assert written["revision"] == 2
 
 
 def test_plan_is_dry_run(tmp_path, capsys):
@@ -159,6 +214,18 @@ def test_canonical_html_modes_escape_everything(builder):
            else render_map.build_standalone(view))
     assert HOSTILE not in out
     assert "&lt;script&gt;" in out
+
+
+def test_markdown_mode_escapes_html_via_common_adapter():
+    # Приёмка Codex 2026-08-28, расхождение 4: markdown идёт через общий
+    # безопасный адаптер — сырой HTML канона не пропускается.
+    hostile = "<img src=x onerror=alert(1)>"
+    doc = _sample()
+    doc["title"] = hostile
+    doc["understanding"][0]["detail"] = hostile
+    out = render_map.build_markdown(doc)
+    assert hostile not in out
+    assert "&lt;img" in out
 
 
 def test_markdown_mode_renders_canonical_sections():
