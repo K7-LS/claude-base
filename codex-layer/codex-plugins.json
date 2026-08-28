@@ -5,19 +5,37 @@
       "version": "0.2.0",
       "displayName": "BIM CAD Workflows",
       "description": "CAD/Revit-workflow: воссоздание DWG, генерация семейств Revit и живой стенд приёмки.",
-      "skills": ["acad-recreation", "revit-family-generator", "revit-family-generator-ru", "revit-testbed"]
+      "skills": [
+        "acad-recreation",
+        "revit-family-generator",
+        "revit-family-generator-ru",
+        "revit-testbed"
+      ]
     },
     "construction-documents": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "displayName": "Construction Documents",
       "description": "ИД, ПНР, УПД, спецификации, СВОР/ВОР и постраничная приёмка томов — документные workflow строительной базы.",
-      "skills": ["id-tom-priemka", "pnr-vor-helper", "upd-parser", "spec-writer", "structured-artifacts", "svor-vor-works-base"]
+      "skills": [
+        "id-tom-priemka",
+        "pnr-vor-helper",
+        "upd-parser",
+        "spec-writer",
+        "structured-artifacts",
+        "svor-vor-works-base"
+      ]
     },
     "project-controls": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "displayName": "Project Controls",
       "description": "Память проекта, слой фактов, карта понимания, сверка спецификаций и независимые quality-гейты.",
-      "skills": ["facts-layer", "project-memory", "understanding-map", "document-quality-gate", "co-verify"]
+      "skills": [
+        "facts-layer",
+        "project-memory",
+        "understanding-map",
+        "document-quality-gate",
+        "co-verify"
+      ]
     }
   }
 }

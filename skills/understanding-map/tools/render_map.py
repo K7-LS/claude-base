@@ -59,6 +59,85 @@ def g(d, key, default=""):
     return v if v is not None else default
 
 
+# ─────────────────────── КАНОН → VIEW (adapter, экранирование) ───────────────────────
+
+REVIEW_STATE_RU = {
+    "draft": "Черновик",
+    "changes_requested": "Есть правки",
+    "confirmed": "Подтверждена",
+}
+
+
+def is_canonical(d) -> bool:
+    return isinstance(d, dict) and "schema_version" in d
+
+
+def _E(v) -> str:
+    """Канон — plain text: экранируем ВСЁ, разметка не интерпретируется."""
+    return html.escape(str(v)) if isinstance(v, str) and v else ""
+
+
+def _entry_detail(entry) -> str:
+    detail = entry.get("detail") or ""
+    sids = entry.get("source_ids") or []
+    if sids:
+        suffix = "Источники: " + ", ".join(str(s) for s in sids)
+        detail = f"{detail} · {suffix}" if detail else suffix
+    return detail
+
+
+def canonical_to_view(d: dict) -> dict:
+    """Канон v1 → legacy view-формат рендеров. Единственная точка экранирования."""
+    def entries(section, zone):
+        return [{
+            "zone": zone,
+            "tag": _E(e.get("tag") or e.get("id", "")),
+            "title": _E(e.get("title", "")),
+            "detail": _E(_entry_detail(e)),
+        } for e in d.get(section) or []]
+
+    rev = d.get("revision", "?")
+    state = d.get("review_state", "draft")
+    ns = d.get("next_step")
+    sources = d.get("sources") or []
+    view = {
+        "title": _E(d.get("title") or "Карта понимания"),
+        "goal": _E(d.get("goal", "")),
+        "eyebrow": ["Общая среда видимости · Claude ↔ Codex ↔ инженер",
+                    _E(f"Карта понимания · rev {rev}")],
+        "items": (entries("understanding", "ok")
+                  + entries("assumptions", "as")
+                  + entries("gaps", "pe")),
+        "flow": [{
+            "n": _E(s.get("n", "")),
+            "title": _E(s.get("title", "")),
+            "detail": _E(s.get("detail", "")),
+            "turn": bool(s.get("turn")),
+        } for s in d.get("analysis_flow") or []],
+        "arch": [{
+            "ln": _E(a.get("ln", "")),
+            "title": _E(a.get("title", "")),
+            "detail": _E(a.get("detail", "")),
+        } for a in d.get("architecture") or []],
+        "decisions": [{
+            "ln": _E(dec.get("id", "")),
+            "title": _E(dec.get("title", "")),
+            "detail": _E(" · ".join(x for x in (dec.get("ref", ""),
+                                                dec.get("detail", "")) if x)),
+        } for dec in d.get("decisions") or []],
+        "stamp": [
+            {"k": "Ревизия", "v": _E(f"rev {rev}")},
+            {"k": "Статус сверки", "v": _E(REVIEW_STATE_RU.get(state, state)),
+             "soft": state != "confirmed"},
+            {"k": "Следующий шаг",
+             "v": _E((ns or {}).get("title") or "—") if isinstance(ns, (dict, type(None))) else "—",
+             "soft": ns is None},
+            {"k": "Источников", "v": _E(str(len(sources)))},
+        ],
+    }
+    return view
+
+
 # ───────────────────────────── STANDALONE («чертёжный лист») ─────────────────────────────
 
 CSS_STANDALONE = r"""
@@ -210,6 +289,10 @@ def build_standalone(d):
     if arch:
         right.append(f'<h2 class="zone-h" style="margin-top:18px">{g(d,"archTitle","Архитектура")}</h2>')
         right.append('<div class="arch">' + "".join(_layer_std(a) for a in arch) + "</div>")
+    decisions = d.get("decisions", [])
+    if decisions:
+        right.append(f'<h2 class="zone-h" style="margin-top:18px">{g(d,"decisionsTitle","Решения · snapshot")}</h2>')
+        right.append('<div class="arch">' + "".join(_layer_std(a) for a in decisions) + "</div>")
 
     flow = d.get("flow", [])
     flow_block = ""
@@ -323,12 +406,11 @@ def _flow_cds(d):
     )
 
 
-def _arch_cds(d):
-    arch = d.get("arch", [])
-    if not arch:
+def _layers_cds(rows_data, block_title):
+    if not rows_data:
         return ""
     rows = []
-    for a in arch:
+    for a in rows_data:
         rows.append(
             '<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;">'
             f'<span style="font-size:11px;font-family:var(--font-mono);color:var(--text-accent);background:var(--bg-accent);border-radius:var(--radius);padding:2px 7px;flex-shrink:0">{g(a,"ln")}</span>'
@@ -339,9 +421,18 @@ def _arch_cds(d):
         )
     return (
         '<div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;">'
-        f'<div style="font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:10px">{g(d,"archTitle","Архитектура")}</div>'
+        f'<div style="font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:10px">{block_title}</div>'
         + "".join(rows) + "</div>"
     )
+
+
+def _arch_cds(d):
+    return _layers_cds(d.get("arch", []), g(d, "archTitle", "Архитектура"))
+
+
+def _decisions_cds(d):
+    return _layers_cds(d.get("decisions", []),
+                       g(d, "decisionsTitle", "Решения · snapshot"))
 
 
 def _stamp_cds(d):
@@ -378,6 +469,7 @@ def build_widget(d):
     parts.append(_zone_card_cds(d, "pe", "Пробелы · решаем"))
     parts.append(_flow_cds(d))
     parts.append(_arch_cds(d))
+    parts.append(_decisions_cds(d))
     parts.append(_stamp_cds(d))
     parts.append(
         '<div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;">'
@@ -393,24 +485,130 @@ def build_widget(d):
     return "".join(p for p in parts if p)
 
 
+# ───────────────────────────── MARKDOWN (текстовый фолбэк) ─────────────────────────────
+
+def _md_entries(lines, heading, entries):
+    if not entries:
+        return
+    lines.append(f"## {heading}")
+    lines.append("")
+    for e in entries:
+        tag = e.get("tag") or e.get("id", "")
+        head = f"**{e.get('title', '')}**"
+        if tag:
+            head += f" ({tag})"
+        detail = e.get("detail") or ""
+        sids = e.get("source_ids") or []
+        if sids:
+            detail = (detail + " · " if detail else "") + "источники: " + ", ".join(sids)
+        lines.append(f"- {head}" + (f" — {detail}" if detail else ""))
+    lines.append("")
+
+
+def build_markdown(d: dict) -> str:
+    """Канонический JSON → markdown. Plain text, без HTML."""
+    state = d.get("review_state", "draft")
+    lines = [
+        f"# {d.get('title') or 'Карта понимания'}",
+        "",
+        f"Цель: {d.get('goal', '')}",
+        "",
+        f"Ревизия: rev {d.get('revision', '?')} · статус сверки: "
+        f"{REVIEW_STATE_RU.get(state, state)}",
+        "",
+    ]
+    _md_entries(lines, "Понято", d.get("understanding") or [])
+    _md_entries(lines, "Допущения — проверь", d.get("assumptions") or [])
+    _md_entries(lines, "Пробелы — решаем", d.get("gaps") or [])
+    decisions = d.get("decisions") or []
+    if decisions:
+        lines.append("## Решения (snapshot)")
+        lines.append("")
+        for dec in decisions:
+            row = f"- {dec.get('id', '')} — {dec.get('title', '')}"
+            if dec.get("ref"):
+                row += f" ({dec['ref']})"
+            if dec.get("detail"):
+                row += f" — {dec['detail']}"
+            lines.append(row)
+        lines.append("")
+    ns = d.get("next_step")
+    lines.append("## Следующий шаг")
+    lines.append("")
+    if isinstance(ns, dict):
+        row = f"- **{ns.get('title', '')}**"
+        if ns.get("detail"):
+            row += f" — {ns['detail']}"
+        lines.append(row)
+    else:
+        lines.append("- не определён")
+    lines.append("")
+    flow = d.get("analysis_flow") or []
+    if flow:
+        lines.append("## Ход разбора")
+        lines.append("")
+        for s in flow:
+            n = s.get("n", "")
+            mark = " ⤴" if s.get("turn") else ""
+            row = f"- {n + ' · ' if n else ''}{s.get('title', '')}{mark}"
+            if s.get("detail"):
+                row += f" — {s['detail']}"
+            lines.append(row)
+        lines.append("")
+    arch = d.get("architecture") or []
+    if arch:
+        lines.append("## Архитектура")
+        lines.append("")
+        for a in arch:
+            ln = a.get("ln", "")
+            row = f"- {ln + ' · ' if ln else ''}{a.get('title', '')}"
+            if a.get("detail"):
+                row += f" — {a['detail']}"
+            lines.append(row)
+        lines.append("")
+    sources = d.get("sources") or []
+    if sources:
+        lines.append("## Источники")
+        lines.append("")
+        for s in sources:
+            row = f"- {s.get('id', '')} · {s.get('kind', '')} · {s.get('ref', '')}"
+            if s.get("locator"):
+                row += f" · {s['locator']}"
+            lines.append(row)
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Карта понимания: JSON → HTML (widget | standalone).")
+    ap = argparse.ArgumentParser(
+        description="Карта понимания: JSON → widget | standalone | markdown.")
     ap.add_argument("data", help="путь к JSON с данными карты")
-    ap.add_argument("--mode", choices=["widget", "standalone"], required=True)
-    ap.add_argument("--out", help="файл для standalone (если не задан — stdout)")
+    ap.add_argument("--mode", choices=["widget", "standalone", "markdown"],
+                    required=True)
+    ap.add_argument("--out", help="файл вывода (если не задан — stdout)")
     args = ap.parse_args()
 
     with open(args.data, encoding="utf-8") as f:
         d = json.load(f)
 
-    out = build_widget(d) if args.mode == "widget" else build_standalone(d)
+    canonical = is_canonical(d)
+    if args.mode == "markdown":
+        if not canonical:
+            sys.stderr.write("markdown-режим принимает только канонический "
+                             "формат (schema_version)\n")
+            return 2
+        out = build_markdown(d)
+    else:
+        view = canonical_to_view(d) if canonical else d
+        out = build_widget(view) if args.mode == "widget" else build_standalone(view)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(out)
         sys.stdout.write(args.out)
     else:
         sys.stdout.write(out)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -71,7 +71,33 @@ description: Use when полезна карта понимания задачи,
 
 `<skill>` = папка этого скилла; `<Desktop>` = рабочий стол пользователя (понятное имя файла).
 
-## Формат данных (JSON)
+## Канонический слой (persisted; зеркальное решение Claude+Codex, 2026-08-28)
+
+Разовая сверка в сессии — как раньше (view-JSON в scratchpad). Если карту нужно
+СОХРАНИТЬ в проекте — используй канонический формат:
+
+- Экземпляр: `<selected-core>/understanding-map.json` (ядро находит
+  `project-memory`). Файл опционален: отсутствие — норма, в признаки валидности
+  ядра не входит. Создавай по активации навыка или явному apply.
+- Схема: `schemas/understanding-map.schema.json` (v1; владелец — плагин
+  `project-controls`; изменение схемы — только зеркальным пакетом через мост).
+- Поля v1: `schema_version, revision, goal, review_state (draft |
+  changes_requested | confirmed), understanding, assumptions, gaps, decisions,
+  sources, next_step (объект|null)`; опционально `title, analysis_flow,
+  architecture`. У записей стабильные `id`; факты проекта НЕ дублируются —
+  ссылки на `FACTS.md` через `source_ids`; `decisions` — snapshot/ссылки на
+  стабильные decision ID (`DECISIONS.md#…`), не третий журнал.
+- Запись — только через `tools/map_store.py`: `plan` (dry-run) → `apply`
+  (backup → временный файл → atomic replace). CAS по `revision`
+  (`--base-revision`); несовпадение — `MAP_CONFLICT`, объединять только явно.
+  Более новая `schema_version` на диске — `UNSUPPORTED_SCHEMA`, read-only.
+- Строки канона — plain text: рендеры экранируют HTML сами. Разметка `<b>`
+  работает только в legacy view-формате (доверенный session-local вход).
+- Рендер канона: те же `--mode widget|standalone` плюс текстовый фолбэк
+  `--mode markdown` (stdout; в файл — при явном `--out`). MCP и session-хуки
+  для чтения/рендера не обязательны.
+
+## Формат данных (legacy view-JSON, session-local)
 
 Все секции кроме `title` опциональны — пустые не рендерятся.
 
@@ -100,9 +126,12 @@ description: Use when полезна карта понимания задачи,
 
 - Слой 1 (description) — выше, во frontmatter.
 - Слой 2 (instructions) — этот файл.
-- Слой 3 (tools) — `tools/render_map.py` (детерминированный рендер) +
-  `examples/sample_map.json` (формат + few-shot). Рендер — кодом, 0 токенов на повторную
-  генерацию HTML; модель производит только данные.
+- Слой 3 (tools) — `tools/render_map.py` (детерминированный рендер: widget /
+  standalone / markdown), `tools/map_store.py` (канон в ядре: plan/apply, CAS),
+  `schemas/understanding-map.schema.json` (контракт данных),
+  `examples/sample_map.json` (legacy few-shot) и `examples/canonical-sample.json`
+  (канон few-shot). Рендер — кодом, 0 токенов на повторную генерацию HTML;
+  модель производит только данные.
 
 ## Обезличивание
 

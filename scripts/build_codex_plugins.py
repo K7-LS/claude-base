@@ -33,6 +33,22 @@ def build_plugin(name: str, spec: dict) -> None:
         shutil.rmtree(skills_dir)
     for s in spec["skills"]:
         shutil.copytree(CANON_SKILLS / s, skills_dir / s, ignore=IGNORE)
+    # Схемы данных членов-скиллов поднимаются в корень плагина (решение Codex,
+    # 2026-08-28): plugin-level канон схем, коллизия имён — ошибка сборки.
+    schemas_dir = root / "schemas"
+    if schemas_dir.exists():
+        shutil.rmtree(schemas_dir)
+    for s in spec["skills"]:
+        source = CANON_SKILLS / s / "schemas"
+        if not source.is_dir():
+            continue
+        for f in sorted(source.glob("*.json")):
+            schemas_dir.mkdir(parents=True, exist_ok=True)
+            target = schemas_dir / f.name
+            if target.exists():
+                raise SystemExit(
+                    f"[build] {name}: коллизия схем {f.name} (скилл {s})")
+            shutil.copy2(f, target)
     (root / ".codex-plugin").mkdir(parents=True, exist_ok=True)
     manifest = {
         "name": name,
