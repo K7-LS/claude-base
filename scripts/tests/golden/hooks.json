@@ -1,74 +1,28 @@
 {
+  "description": "One-way Codex base release notification.",
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "^startup$",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\auto-pull.ps1\"",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\graph-staleness-check.ps1\"",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\skills\\project-memory\\tools\\hooks\\session_start.ps1\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\skills\\project-memory\\tools\\hooks\\session_end.ps1\"",
-            "timeout": 20
-          },
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\auto-push.ps1\"",
-            "timeout": 60
+            "command": "pwsh -NoProfile -File \"$HOME/.codex/base/runtime/hooks/check_release.ps1\"",
+            "commandWindows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\base\\runtime\\hooks\\check_release.ps1\"",
+            "timeout": 38
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": ".*",
+        "matcher": "^(mcp__)?claude(/|__)",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\log-tool-usage.ps1\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "auto",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\codex_context_governor.ps1\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "matcher": "auto",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\codex_context_governor.ps1\"",
-            "timeout": 10
+            "command": "python \"<HOME>\\.claude\\scripts\\interop_journal.py\" --source codex",
+            "commandWindows": "python \"<HOME>\\.claude\\scripts\\interop_journal.py\" --source codex",
+            "timeout": 15
           }
         ]
       }

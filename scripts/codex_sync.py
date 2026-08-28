@@ -18,8 +18,11 @@ END = "# <<< claude-base managed <<<"
 
 
 def _is_codex_runtime_table(name: str) -> bool:
-    """Таблицы, которыми владеет Codex App, а не канонический синк."""
-    return name == "memories" or name == "hooks.state" or name.startswith("hooks.state.")
+    """Таблицы, которыми владеет Codex App, а не канонический синк.
+    cua_repl — App-owned (решение Codex, приёмка 2026-08-28): Desktop сам
+    вписывает секцию с версионным WindowsApps-путём, в канон её не включаем."""
+    return (name == "memories" or name == "hooks.state" or name.startswith("hooks.state.")
+            or name == "mcp_servers.cua_repl" or name.startswith("mcp_servers.cua_repl."))
 
 
 def _split_codex_runtime_tables(text: str) -> tuple[str, str]:
@@ -41,6 +44,25 @@ def _split_codex_runtime_tables(text: str) -> tuple[str, str]:
         cursor = end
     return "".join(kept), "\n\n".join(part for part in runtime if part)
 
+def _dedupe_codex_runtime_tables(runtime: str) -> str:
+    """Схлопнуть дубли runtime-таблиц (App мог записать секцию и внутрь
+    managed-блока, и снаружи): последняя копия побеждает, порядок — по
+    первому появлению; дубль таблицы в TOML иначе невалиден."""
+    if not runtime:
+        return runtime
+    headers = list(re.finditer(r"(?m)^\[(?P<name>[^\]]+)\][ \t]*$", runtime))
+    if len(headers) <= 1:
+        return runtime
+    order, by_name = [], {}
+    for i, header in enumerate(headers):
+        start = header.start()
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(runtime)
+        name = header.group("name")
+        if name not in by_name:
+            order.append(name)
+        by_name[name] = runtime[start:end].strip()
+    return "\n\n".join(by_name[name] for name in order)
+
 def apply_managed_block(existing: str, payload: str) -> str:
     block = f"{BEGIN}\n{payload.rstrip()}\n{END}\n"
     pattern = re.compile(re.escape(BEGIN) + r"\n(.*?)\n?" + re.escape(END) + r"\n?", re.S)
@@ -51,6 +73,7 @@ def apply_managed_block(existing: str, payload: str) -> str:
         _, inside_runtime = _split_codex_runtime_tables(old_payload)
         if inside_runtime:
             runtime = "\n\n".join(part for part in (runtime, inside_runtime) if part)
+    runtime = _dedupe_codex_runtime_tables(runtime)
     if not stripped.strip():
         return block + ("\n" + runtime.rstrip() + "\n" if runtime else "")
     sep = "" if stripped.endswith("\n\n") else ("\n" if stripped.endswith("\n") else "\n\n")
@@ -233,24 +256,36 @@ def _pwsh(script: Path) -> str:
     return f"powershell -NoProfile -ExecutionPolicy Bypass -File \"{script}\""
 
 def render_hooks_json(home: Path) -> dict:
-    s = home / ".claude" / "scripts"
-    pm = home / ".claude" / "skills" / "project-memory" / "tools" / "hooks"
-    def entry(script, timeout):
-        return {"type": "command", "command": _pwsh(script), "timeout": timeout}
-    return {"hooks": {
-        "SessionStart": [{"hooks": [
-            entry(s / "auto-pull.ps1", 30),
-            entry(s / "graph-staleness-check.ps1", 15),
-            entry(pm / "session_start.ps1", 10),
-        ]}],
-        "Stop": [{"hooks": [
-            entry(pm / "session_end.ps1", 20),
-            entry(s / "auto-push.ps1", 60),
-        ]}],
-        "PostToolUse": [{"matcher": ".*", "hooks": [entry(s / "log-tool-usage.ps1", 10)]}],
-        "PreCompact": [{"matcher": "auto", "hooks": [entry(s / "codex_context_governor.ps1", 10)]}],
-        "PostCompact": [{"matcher": "auto", "hooks": [entry(s / "codex_context_governor.ps1", 10)]}],
-    }}
+    # Канон hooks — решение Codex (приёмка 2026-08-28): one-way уведомление о
+    # релизе + журнал моста. Старый набор не возвращать: auto-pull/push
+    # противоречат one-way контуру sync-base, session-хуки сняты контрактом
+    # project-memory 0.2.0, Pre/PostCompact заменён текстовым протоколом.
+    # Путь журнала рендерится от home — профиль пользователя не хардкодим.
+    journal = home / ".claude" / "scripts" / "interop_journal.py"
+    journal_cmd = f'python "{journal}" --source codex'
+    return {
+        "description": "One-way Codex base release notification.",
+        "hooks": {
+            "SessionStart": [{
+                "matcher": "^startup$",
+                "hooks": [{
+                    "type": "command",
+                    "command": "pwsh -NoProfile -File \"$HOME/.codex/base/runtime/hooks/check_release.ps1\"",
+                    "commandWindows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\base\\runtime\\hooks\\check_release.ps1\"",
+                    "timeout": 38,
+                }],
+            }],
+            "PostToolUse": [{
+                "matcher": "^(mcp__)?claude(/|__)",
+                "hooks": [{
+                    "type": "command",
+                    "command": journal_cmd,
+                    "commandWindows": journal_cmd,
+                    "timeout": 15,
+                }],
+            }],
+        },
+    }
 
 MODEL_MAP = {
     "opus": "gpt-5.6-sol",
@@ -596,7 +631,7 @@ def render_target_codex(home: Path, context=None) -> dict:
     out = {
         "AGENTS.md": render_agents_md(core, layer),
         "config.toml#managed": "\n\n".join(part for part in config_parts if part).strip(),
-        "hooks.json": json.dumps(render_hooks_json(home), ensure_ascii=False, indent=2),
+        "hooks.json": json.dumps(render_hooks_json(home), ensure_ascii=False, indent=2) + "\n",
     }
     for fname, toml_text in agent_tomls.items():
         out[f"agents/{fname}"] = toml_text

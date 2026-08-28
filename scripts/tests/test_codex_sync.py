@@ -82,37 +82,35 @@ def test_render_skills_toml(tmp_path):
     assert "excel-helper" in out and "enabled = true" in out
 
 def test_render_hooks_json_structure(tmp_path):
+    # Канон hooks заменён ОСОЗНАННО решением Codex (приёмка 2026-08-28):
+    # one-way уведомление о релизе + журнал моста; auto-pull/push и
+    # session-хуки не возвращаются (противоречат one-way контуру sync-base).
     from codex_sync import render_hooks_json
     hooks = render_hooks_json(tmp_path)
-    assert set(hooks["hooks"].keys()) == {"SessionStart", "Stop", "PostToolUse", "PreCompact", "PostCompact"}
+    assert hooks["description"] == "One-way Codex base release notification."
+    assert set(hooks["hooks"].keys()) == {"SessionStart", "PostToolUse"}
 
-    start = hooks["hooks"]["SessionStart"][0]["hooks"]
-    assert "auto-pull.ps1" in start[0]["command"]          # pull строго первым
-    assert "graph-staleness-check.ps1" in start[1]["command"]
-    assert "session_start.ps1" in start[2]["command"]
-    assert [h["timeout"] for h in start] == [30, 15, 10]
-
-    stop = hooks["hooks"]["Stop"][0]["hooks"]
-    assert "session_end.ps1" in stop[0]["command"]         # журнал до пуша
-    assert "auto-push.ps1" in stop[1]["command"]
-    assert [h["timeout"] for h in stop] == [20, 60]
+    start = hooks["hooks"]["SessionStart"][0]
+    assert start["matcher"] == "^startup$"
+    (release,) = start["hooks"]
+    assert "check_release.ps1" in release["command"]
+    assert "check_release.ps1" in release["commandWindows"]
+    assert release["timeout"] == 38
+    assert str(tmp_path) not in release["command"]        # без хардкода профиля
 
     ptu = hooks["hooks"]["PostToolUse"][0]
-    assert ptu["matcher"] == ".*"
-    assert "log-tool-usage.ps1" in ptu["hooks"][0]["command"]
-    assert ptu["hooks"][0]["timeout"] == 10
-
-    for event in ("PreCompact", "PostCompact"):
-        compact = hooks["hooks"][event][0]
-        assert compact["matcher"] == "auto"
-        assert "codex_context_governor.ps1" in compact["hooks"][0]["command"]
-        assert compact["hooks"][0]["timeout"] == 10
+    assert ptu["matcher"] == "^(mcp__)?claude(/|__)"
+    (journal,) = ptu["hooks"]
+    assert "interop_journal.py" in journal["command"]
+    assert journal["command"] == journal["commandWindows"]
+    assert str(tmp_path) in journal["command"]            # путь журнала — от home
+    assert journal["command"].endswith("--source codex")
+    assert journal["timeout"] == 15
 
     for group in hooks["hooks"].values():
         for m in group:
             for h in m["hooks"]:
                 assert h["type"] == "command"
-                assert h["command"].count('"') == 2        # путь в кавычках
 
     import json
     json.loads(json.dumps(hooks, ensure_ascii=False))             # сериализуемость round-trip
@@ -485,6 +483,73 @@ def test_sync_migrates_and_preserves_codex_runtime_state(make_canon):
     migrated = cfg.read_text(encoding="utf-8")
     assert migrated.index(END) < migrated.index("[hooks.state]")
     assert "generate_memories = true" in migrated
+    assert check(home)["manual-drift"] == [] and check(home)["canon-newer"] == []
+
+def test_cua_repl_inside_managed_is_canon_newer_and_sync_relocates(make_canon):
+    # Решение Codex (приёмка 2026-08-28): cua_repl — App-owned runtime table;
+    # запись App внутрь managed-блока — canon-newer, sync выносит за маркер
+    # без изменения значений, повторный sync идемпотентен.
+    import tomllib
+    from codex_sync import END, check, sync
+    home = make_canon(); sync(home)
+    cfg = home / ".codex" / "config.toml"
+    raw = cfg.read_text(encoding="utf-8")
+    section = ("[mcp_servers.cua_repl]\n"
+               "command = 'C:\\WindowsApps\\OpenAI.Codex_26.825_x64\\ChatGPT.exe'\n"
+               "enabled = false\n")
+    cfg.write_text(raw.replace(END, section + END), encoding="utf-8")
+    res = check(home)
+    assert "config.toml#managed" in res["canon-newer"]
+    assert "config.toml#managed" not in res["manual-drift"]
+    assert sync(home) == 0
+    migrated = cfg.read_text(encoding="utf-8")
+    assert migrated.index(END) < migrated.index("[mcp_servers.cua_repl]")
+    assert "enabled = false" in migrated and "ChatGPT.exe" in migrated
+    tomllib.loads(migrated)
+    assert sync(home) == 0                                    # идемпотентность
+    again = cfg.read_text(encoding="utf-8")
+    assert again.count("[mcp_servers.cua_repl]") == 1         # дубля нет
+    assert check(home)["manual-drift"] == [] and check(home)["canon-newer"] == []
+
+def test_cua_repl_version_bump_outside_managed_is_not_drift(make_canon):
+    # Версионный WindowsApps-путь меняется при обновлении App — drift не создаётся.
+    import tomllib
+    from codex_sync import check, sync
+    home = make_canon(); sync(home)
+    cfg = home / ".codex" / "config.toml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") +
+                   "\n[mcp_servers.cua_repl]\n"
+                   "command = 'C:\\WindowsApps\\OpenAI.Codex_1_x64\\ChatGPT.exe'\n"
+                   "enabled = false\n", encoding="utf-8")
+    assert check(home)["manual-drift"] == []
+    cfg.write_text(cfg.read_text(encoding="utf-8").replace("Codex_1_x64", "Codex_2_x64"),
+                   encoding="utf-8")
+    assert check(home)["manual-drift"] == []
+    assert sync(home) == 0
+    merged = cfg.read_text(encoding="utf-8")
+    assert "Codex_2_x64" in merged                            # значение App не тронуто
+    tomllib.loads(merged)
+
+def test_cua_repl_duplicate_copies_collapse_deterministically(make_canon):
+    # Две копии секции (внутри и снаружи managed) схлопываются детерминированно:
+    # побеждает копия из managed-блока (самая свежая запись App).
+    import tomllib
+    from codex_sync import END, check, sync
+    home = make_canon(); sync(home)
+    cfg = home / ".codex" / "config.toml"
+    raw = cfg.read_text(encoding="utf-8")
+    inside = ("[mcp_servers.cua_repl]\n"
+              "command = 'C:\\WindowsApps\\OpenAI.Codex_2_x64\\ChatGPT.exe'\n"
+              "enabled = false\n")
+    outside = ("\n[mcp_servers.cua_repl]\n"
+               "command = 'C:\\WindowsApps\\OpenAI.Codex_1_x64\\ChatGPT.exe'\n"
+               "enabled = false\n")
+    cfg.write_text(raw.replace(END, inside + END) + outside, encoding="utf-8")
+    assert sync(home) == 0
+    merged = cfg.read_text(encoding="utf-8")
+    assert merged.count("[mcp_servers.cua_repl]") == 1
+    assert "Codex_2_x64" in merged and "Codex_1_x64" not in merged
+    tomllib.loads(merged)
     assert check(home)["manual-drift"] == [] and check(home)["canon-newer"] == []
 
 def test_check_reports_missing_skill_junction_and_sync_heals(make_canon):
