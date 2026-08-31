@@ -5,8 +5,10 @@
   Claude Code: python interop_journal.py --source claude
   Codex:       python interop_journal.py --source codex
 Ошибки вызова (PostToolUseFailure): добавить --failed — запись «ОШИБКА МОСТА».
-Ручная дозапись (ответ восстановлен из rollout после обрыва): --manual,
-stdin — JSON {"direction":"claude"|"codex","tool":...,"prompt":...,"answer":...}.
+Ручная дозапись: --manual, stdin — JSON {"direction":"claude"|"codex",
+"tool":...,"prompt":...,"answer":..., опционально "channel": метка канала
+(по умолчанию «восстановлено из rollout»; доставщик codex_deliver.py
+подставляет «через CLI codex exec»).
 
 Никогда не роняет вызвавший инструмент: любая ошибка — тихий exit 0.
 """
@@ -93,7 +95,8 @@ def main() -> int:
     if args.manual:
         d = event
         direction = "Claude → Codex" if d.get("direction", "claude") == "claude" else "Codex → Claude"
-        lines.append(f"## {stamp} — {direction} ({d.get('tool', 'codex')}, восстановлено из rollout)")
+        channel = d.get("channel") or "восстановлено из rollout"
+        lines.append(f"## {stamp} — {direction} ({d.get('tool', 'codex')}, {channel})")
         lines.append(clip(d.get("prompt", "")))
         lines.append("")
         lines.append("**Codex ответил:**" if direction.startswith("Claude") else "**Claude вернул:**")
