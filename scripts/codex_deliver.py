@@ -23,6 +23,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Консоль Windows по умолчанию cp1251: печать ответа Codex с типографикой
+# (неразрывный дефис и подобное) роняла скрипт уже ПОСЛЕ доставки и записи
+# в журнал — доставка была успешной, а выглядело как падение.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 HOME = Path.home()
 JOURNAL_TOOL = HOME / ".claude" / "scripts" / "interop_journal.py"
 SESSIONS = HOME / ".codex" / "sessions"
