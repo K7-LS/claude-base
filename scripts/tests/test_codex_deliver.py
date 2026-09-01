@@ -141,3 +141,77 @@ def test_manual_mode_labels_the_cli_channel(tmp_path, monkeypatch):
     assert "через CLI codex exec" in written
     assert "восстановлено из rollout" not in written
     assert "Claude → Codex" in written
+
+
+def test_resume_command_omits_cd_and_new_thread_keeps_it(monkeypatch, tmp_path):
+    # codex exec resume принимает только --config: с --cd CLI падает
+    # «unexpected argument», а доставка выглядела успешной, потому что из
+    # rollout поднимался предыдущий ответ.
+    import codex_deliver as cd
+
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+
+        class R:
+            returncode = 0
+            stdout = b""
+            stderr = b""
+        return R()
+
+    monkeypatch.setattr(cd.subprocess, "run", fake_run)
+    monkeypatch.setattr(cd, "find_codex", lambda: "codex.exe")
+    monkeypatch.setattr(cd, "SESSIONS", tmp_path)
+    monkeypatch.setattr(cd, "journal", lambda *a, **k: True)
+    prompt = tmp_path / "p.txt"
+    prompt.write_text("пакет", encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys, "argv",
+        ["codex_deliver.py", "--thread", THREAD, "--prompt-file", str(prompt)],
+    )
+    cd.main()
+    resume_cmd = captured["command"]
+    assert resume_cmd[1:3] == ["exec", "resume"]
+    assert "--cd" not in resume_cmd
+    assert THREAD in resume_cmd
+
+    monkeypatch.setattr(
+        sys, "argv", ["codex_deliver.py", "--prompt-file", str(prompt)]
+    )
+    cd.main()
+    assert "--cd" in captured["command"]      # новый тред задаёт рабочую папку
+
+
+def test_previous_answer_is_not_reported_as_delivered(monkeypatch, tmp_path, capsys):
+    # Ответ засчитывается только если task_complete прибавился после доставки.
+    import codex_deliver as cd
+
+    rollout = _rollout(tmp_path, THREAD, [
+        {"type": "event_msg", "payload": {"type": "task_complete",
+                                          "last_agent_message": "старый ответ"}},
+    ])
+    assert cd.completed_answers(rollout) == 1
+
+    def fake_run(command, **kwargs):
+        class R:
+            returncode = 2
+            stdout = b""
+            stderr = b"error: unexpected argument '--cd' found"
+        return R()
+
+    monkeypatch.setattr(cd.subprocess, "run", fake_run)
+    monkeypatch.setattr(cd, "find_codex", lambda: "codex.exe")
+    monkeypatch.setattr(cd, "SESSIONS", tmp_path)
+    monkeypatch.setattr(cd, "journal", lambda *a, **k: True)
+    prompt = tmp_path / "p.txt"
+    prompt.write_text("пакет", encoding="utf-8")
+    monkeypatch.setattr(
+        sys, "argv",
+        ["codex_deliver.py", "--thread", THREAD, "--prompt-file", str(prompt)],
+    )
+    assert cd.main() == 1
+    report = json.loads(capsys.readouterr().out.split("\n--- ")[0])
+    assert report["status"] == "NO_NEW_ANSWER"
+    assert "старый ответ" not in json.dumps(report, ensure_ascii=False)

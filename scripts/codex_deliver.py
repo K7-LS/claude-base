@@ -90,6 +90,23 @@ def answer_from_rollout(path) -> str:
     return answer.strip()
 
 
+def completed_answers(path) -> int:
+    """Сколько ответов уже завершено в rollout (task_complete)."""
+    if path is None or not path.is_file():
+        return 0
+    total = 0
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if row.get("type") == "event_msg" and (row.get("payload") or {}).get(
+            "type"
+        ) == "task_complete":
+            total += 1
+    return total
+
+
 def thread_from_rollout(path) -> str:
     if path is None:
         return ""
@@ -143,12 +160,18 @@ def main() -> int:
         raise SystemExit("пустой пакет: нечего доставлять")
 
     codex = find_codex()
-    command = [codex, "exec"]
+    # resume принимает только --config: рабочая папка берётся из самой сессии.
+    # С --cd CLI падает «unexpected argument», а доставка выглядела успешной,
+    # потому что из rollout поднимался ПРЕДЫДУЩИЙ ответ.
     if arguments.thread:
-        command += ["resume", arguments.thread]
-    command += NESTED_BRIDGE_OFF + ["--cd", arguments.cd, prompt]
+        command = [codex, "exec", "resume", *NESTED_BRIDGE_OFF,
+                   arguments.thread, prompt]
+    else:
+        command = [codex, "exec", *NESTED_BRIDGE_OFF,
+                   "--cd", arguments.cd, prompt]
 
     before = rollout_for(arguments.thread)
+    answers_before = completed_answers(before)
     completed = subprocess.run(
         command,
         capture_output=True,
@@ -165,7 +188,8 @@ def main() -> int:
 
     # Ответ берём из rollout: stdout CLI несёт служебный шум и обрезается.
     path = rollout_for(arguments.thread) or before
-    answer = answer_from_rollout(path)
+    fresh = completed_answers(path) > answers_before
+    answer = answer_from_rollout(path) if fresh else ""
     thread = arguments.thread or thread_from_rollout(path)
 
     written = False
@@ -173,7 +197,9 @@ def main() -> int:
         written = journal("claude", prompt, answer, arguments.thread)
 
     print(json.dumps({
-        "status": "DELIVERED" if answer else "NO_ANSWER",
+        "status": "DELIVERED" if answer else (
+            "NO_NEW_ANSWER" if completed_answers(path) else "NO_ANSWER"
+        ),
         "exit_code": completed.returncode,
         "thread": thread,
         "journaled": written,
