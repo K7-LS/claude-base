@@ -1008,7 +1008,7 @@
     {
       "skill_id": "excel-helper",
       "activation": "manifest",
-      "trigger": "xlsx task",
+      "trigger": "skipped",
       "preconditions": [
         "workbook path"
       ],
@@ -1016,17 +1016,18 @@
         "spreadsheet.read",
         "spreadsheet.write"
       ],
-      "fallback": "report spreadsheet runtime unavailable",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "word-helper",
       "activation": "manifest",
-      "trigger": "docx task",
+      "trigger": "skipped",
       "preconditions": [
         "document path"
       ],
@@ -1034,17 +1035,18 @@
         "document.word.read",
         "document.word.write"
       ],
-      "fallback": "return draft",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "doc-extract",
       "activation": "manifest",
-      "trigger": "PDF extraction",
+      "trigger": "skipped",
       "preconditions": [
         "PDF path"
       ],
@@ -1052,17 +1054,18 @@
         "pdf.read",
         "pdf.render"
       ],
-      "fallback": "report extraction unavailable",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "pdf-edit",
       "activation": "manifest",
-      "trigger": "PDF edit",
+      "trigger": "skipped",
       "preconditions": [
         "PDF path"
       ],
@@ -1071,12 +1074,13 @@
         "pdf.render",
         "pdf.write"
       ],
-      "fallback": "return edit plan",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "facts-layer",
@@ -1115,40 +1119,42 @@
     {
       "skill_id": "domain-grilling",
       "activation": "manifest",
-      "trigger": "underspecified construction task",
+      "trigger": "skipped",
       "preconditions": [
         "user available"
       ],
       "required_capabilities": [
         "core.files.read"
       ],
-      "fallback": "ask bounded questions",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "karpathy-guidelines",
       "activation": "manifest",
-      "trigger": "implementation task",
+      "trigger": "skipped",
       "preconditions": [],
       "required_capabilities": [
         "core.files.read",
         "core.shell.execute"
       ],
-      "fallback": "apply review checklist",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "handoff-to-new-chat",
       "activation": "manifest",
-      "trigger": "context handoff",
+      "trigger": "skipped",
       "preconditions": [
         "state files"
       ],
@@ -1156,18 +1162,18 @@
         "core.files.read",
         "core.files.write"
       ],
-      "fallback": "return LITE prompt",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "live",
-        "evidence": "context governor smoke"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "llm-interop",
       "activation": "manifest",
-      "trigger": "cross-model delegation",
+      "trigger": "skipped",
       "preconditions": [
         "task contract"
       ],
@@ -1175,17 +1181,18 @@
         "core.files.read",
         "core.shell.execute"
       ],
-      "fallback": "return neutral JSON task",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "web-access",
       "activation": "manifest",
-      "trigger": "web task",
+      "trigger": "skipped",
       "preconditions": [
         "source query"
       ],
@@ -1193,12 +1200,13 @@
         "web.search",
         "web.fetch"
       ],
-      "fallback": "report unverified source",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "acad-recreation",
@@ -1654,17 +1662,18 @@
     {
       "skill_id": "ru-writing-style",
       "activation": "manifest",
-      "trigger": "russian prose task",
+      "trigger": "skipped",
       "preconditions": [],
       "required_capabilities": [
         "core.files.read"
       ],
-      "fallback": "write without style layer",
+      "fallback": "preserve manifest skip",
       "optional_capabilities": [],
-      "manifest_state": "enabled",
+      "manifest_state": "skipped",
       "verification": {
-        "status": "static"
-      }
+        "status": "blocked"
+      },
+      "skip_reason": "доставляется релизом базы Codex; junction ломает установку (Foundation отвергает reparse point)"
     },
     {
       "skill_id": "sync-base",
