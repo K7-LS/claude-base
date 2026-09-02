@@ -18,14 +18,14 @@
 |---|---|---|
 | #57 | диалог по неизвестным записям не показывался никогда (`ArrayList`) | смержен |
 | #59 | счётчик «0 файлов» — тот же корень | смержен |
-| #58 | этап 0: VPN убран; миграция `connection.json` и `launcher-routes.json` (VPN→Direct); гард-allowlist; инструкции без VPN | открыт, честный прогон 170 passed; CI падал на флейке watchdog — rerun запущен; автомерж-монитор был в этой сессии и умрёт с ней |
+| #58 | этап 0: VPN убран; миграция `connection.json` и `launcher-routes.json` (VPN→Direct); гард-allowlist; инструкции без VPN | смержен |
 | #60 | реальный таймаут запуска движка (параллельное чтение потоков) | смержен |
 | #61 | CI-job «5.1» собирает через `powershell.exe` (`K7_TEST_POWERSHELL`) | открыт; CI падал на втором флейке того же модуля (`test_stop_route_restores_proxy_without_killing_appx_client`, код 20) — локально проходит под обеими оболочками, rerun запущен |
 | #62 | частичная установка не выглядит как полный успех | открыт; трогает `InstallerActions.cs` и хвост `test_latest_base_updater.py` — возможен add/add с #60, разрешать «оба хвоста» |
 | #63 | корень `.config/opencode/skills` для диалога коллизии | открыт |
 | #64 | диагностика fail-closed, schema 2, SHA EXE, все цели из каталога | открыт |
 
-Мониторы автомержа в новом чате ставить заново: цикл `gh pr view N --json state,mergeStateStatus,statusCheckRollup` → CLEAN → `gh pr merge N --squash --delete-branch`; BEHIND → `gh pr update-branch`; при FAILURE — `gh run list --branch <ветка> --limit 1` → `gh run rerun <id> --failed` (до 3–4 раз: флейк `test_owner_crash_is_restored_by_internal_watchdog`, по нему заведена отдельная задача).
+Мониторы автомержа в новом чате ставить заново — **по состоянию последнего run ветки**, не по `statusCheckRollup` (он показывает FAILURE отменённого run после `update-branch` — ловил ложные «СТОП»): `gh run list --branch <ветка> --limit 1 --json databaseId,status,conclusion`; пока `status != completed` — ждать; `conclusion == failure` → `gh run rerun <id> --failed` (до 4 раз, флейки `test_system_proxy_lease`); иначе `gh pr view N --json mergeStateStatus`: CLEAN → `gh pr merge N --squash --delete-branch`; BEHIND → `gh pr update-branch N`; DIRTY → разрешать в `git worktree` («оба хвоста» тестов).
 
 ### Локально
 - `~/repos/llm-foundation-installer`: рабочая копия на `feat/remove-vpn-mode`, чистая; мои сегодняшние worktree убраны. В `git worktree list` остаются 11 записей прошлых сессий (`~/repos/.worktrees/foundation-*`, `launch-center-*`, ветки `codex/*`, `fix/*`, `repair/*`) — не мои, не трогать без владельца.
@@ -42,7 +42,7 @@
 ## Открытые вопросы владельцу (не отвечены)
 1. Шаги мастера — реальные экраны (тогда «Готово» = центр запуска, снимает вопрос «где Launcher») или один экран без полосы шагов?
 2. SOCKS5 среди типов прокси — оставить? (sing-box поддерживает; по умолчанию оставляем.)
-3. Sing-box для нескольких клиентов одновременно — общий ref-counted транспорт или честная надпись «маршрут занят другим клиентом»?
+3. Sing-box для нескольких клиентов одновременно — общий ref-counted транспорт или честная надпись «маршрут занят другим клиентом»? **Техническая позиция Codex получена (ответ №7):** сейчас безопаснее честное ограничение одного proxied-клиента с объяснением `ROUTE_ALREADY_ACTIVE` и кнопкой «остановить маршрут»; общий транспорт — только через отдельный per-user broker (детали в плане). Наивный ref-count в `ClientLauncher` Codex не санкционирует.
 
 ## Что дальше (по порядку)
 1. Домержить #58, #60–#64 (мониторы; конфликты хвостов тестов — «оба блока»).
