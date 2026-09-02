@@ -19,8 +19,8 @@
 | #57 | диалог по неизвестным записям не показывался никогда (`ArrayList`) | смержен |
 | #59 | счётчик «0 файлов» — тот же корень | смержен |
 | #58 | этап 0: VPN убран; миграция `connection.json` и `launcher-routes.json` (VPN→Direct); гард-allowlist; инструкции без VPN | открыт, честный прогон 170 passed; CI падал на флейке watchdog — rerun запущен; автомерж-монитор был в этой сессии и умрёт с ней |
-| #60 | реальный таймаут запуска движка (параллельное чтение потоков) | открыт, конфликт с #59 разрешён (оба хвостовых теста сохранены) |
-| #61 | CI-job «5.1» собирает через `powershell.exe` (`K7_TEST_POWERSHELL`) | открыт |
+| #60 | реальный таймаут запуска движка (параллельное чтение потоков) | смержен |
+| #61 | CI-job «5.1» собирает через `powershell.exe` (`K7_TEST_POWERSHELL`) | открыт; CI падал на втором флейке того же модуля (`test_stop_route_restores_proxy_without_killing_appx_client`, код 20) — локально проходит под обеими оболочками, rerun запущен |
 | #62 | частичная установка не выглядит как полный успех | открыт; трогает `InstallerActions.cs` и хвост `test_latest_base_updater.py` — возможен add/add с #60, разрешать «оба хвоста» |
 | #63 | корень `.config/opencode/skills` для диалога коллизии | открыт |
 | #64 | диагностика fail-closed, schema 2, SHA EXE, все цели из каталога | открыт |
@@ -28,7 +28,8 @@
 Мониторы автомержа в новом чате ставить заново: цикл `gh pr view N --json state,mergeStateStatus,statusCheckRollup` → CLEAN → `gh pr merge N --squash --delete-branch`; BEHIND → `gh pr update-branch`; при FAILURE — `gh run list --branch <ветка> --limit 1` → `gh run rerun <id> --failed` (до 3–4 раз: флейк `test_owner_crash_is_restored_by_internal_watchdog`, по нему заведена отдельная задача).
 
 ### Локально
-- `~/repos/llm-foundation-installer`: рабочая копия на `feat/remove-vpn-mode`, чистая; все worktree убраны. Параллельные PR делались через `git worktree` — **не переключать ветку под фоновым pytest** (поймано два ложных падения).
+- `~/repos/llm-foundation-installer`: рабочая копия на `feat/remove-vpn-mode`, чистая; мои сегодняшние worktree убраны. В `git worktree list` остаются 11 записей прошлых сессий (`~/repos/.worktrees/foundation-*`, `launch-center-*`, ветки `codex/*`, `fix/*`, `repair/*`) — не мои, не трогать без владельца.
+- `~/.claude`: четыре коммита сессии (BOM для скриптов, память проекта в hooks Codex, отказ от junction-раздачи скиллов, классификация скиллов релиза) запушены через `auto-push.ps1`. Параллельные PR делались через `git worktree` — **не переключать ветку под фоновым pytest** (поймано два ложных падения).
 - `~/K7-packages/{claude,codex,opencode}` — три принятых пакета (0.1.25 / 0.1.27 / 0.1.14).
 - `~/K7-Launcher-Employee-full/` — последний собранный комплект (до #58–#64).
 - Папка синка с рабочими ПК: `<Я.Диск>/…/LLM/Разработка/K7-Launcher-Employee` — там комплект от 19:43 (с #53–#56), `ДИАГНОСТИКА.cmd` + `worksite-diagnostics.ps1` старой версии (schema 1), `КАК-ЗАПУСТИТЬ.md`. Отчёты сотрудников — подпапка «Ответ с рабочего ПК» (две станции без админ-прав: обе прошли, одна упёрлась в коллизию `acad-recreation` — закрыто #55).
