@@ -88,11 +88,21 @@ def test_render_hooks_json_structure(tmp_path):
     from codex_sync import render_hooks_json
     hooks = render_hooks_json(tmp_path)
     assert hooks["description"] == "One-way Codex base release notification."
-    assert set(hooks["hooks"].keys()) == {"SessionStart", "PostToolUse"}
+    # Память проекта возвращена решением владельца 2026-09-01; auto-pull/push
+    # и context governor по-прежнему не возвращаются.
+    assert set(hooks["hooks"].keys()) == {"SessionStart", "Stop", "PostToolUse"}
 
     start = hooks["hooks"]["SessionStart"][0]
     assert start["matcher"] == "^startup$"
-    (release,) = start["hooks"]
+    release, memory = start["hooks"]
+    assert "project-memory-hooks" in memory["command"]
+    assert memory["command"].endswith('session_start.ps1"')
+    assert memory["timeout"] == 10
+    (stop,) = hooks["hooks"]["Stop"][0]["hooks"]
+    assert stop["command"].endswith('session_end.ps1"') and stop["timeout"] == 20
+    import json as _json
+    for banned in ("auto-pull", "auto-push", "codex_context_governor"):
+        assert banned not in _json.dumps(hooks, ensure_ascii=False)
     assert "check_release.ps1" in release["command"]
     assert "check_release.ps1" in release["commandWindows"]
     assert release["timeout"] == 38

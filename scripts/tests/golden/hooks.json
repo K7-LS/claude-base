@@ -10,6 +10,24 @@
             "command": "pwsh -NoProfile -File \"$HOME/.codex/base/runtime/hooks/check_release.ps1\"",
             "commandWindows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\base\\runtime\\hooks\\check_release.ps1\"",
             "timeout": 38
+          },
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\project-memory-hooks\\session_start.ps1\"",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\project-memory-hooks\\session_start.ps1\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\project-memory-hooks\\session_end.ps1\"",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<HOME>\\.claude\\scripts\\project-memory-hooks\\session_end.ps1\"",
+            "timeout": 20
           }
         ]
       }

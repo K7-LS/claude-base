@@ -263,6 +263,12 @@ def render_hooks_json(home: Path) -> dict:
     # Путь журнала рендерится от home — профиль пользователя не хардкодим.
     journal = home / ".claude" / "scripts" / "interop_journal.py"
     journal_cmd = f'python "{journal}" --source codex'
+    # Память проекта возвращена решением владельца 2026-09-01: без неё Codex
+    # терял проработку задач по журналу/STATUS проекта. Auto-pull/auto-push и
+    # context governor остаются снятыми (one-way контур, вердикт Codex).
+    pm = home / ".claude" / "scripts" / "project-memory-hooks"
+    memory_start = _pwsh(pm / "session_start.ps1")
+    memory_end = _pwsh(pm / "session_end.ps1")
     return {
         "description": "One-way Codex base release notification.",
         "hooks": {
@@ -273,6 +279,19 @@ def render_hooks_json(home: Path) -> dict:
                     "command": "pwsh -NoProfile -File \"$HOME/.codex/base/runtime/hooks/check_release.ps1\"",
                     "commandWindows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\base\\runtime\\hooks\\check_release.ps1\"",
                     "timeout": 38,
+                }, {
+                    "type": "command",
+                    "command": memory_start,
+                    "commandWindows": memory_start,
+                    "timeout": 10,
+                }],
+            }],
+            "Stop": [{
+                "hooks": [{
+                    "type": "command",
+                    "command": memory_end,
+                    "commandWindows": memory_end,
+                    "timeout": 20,
                 }],
             }],
             "PostToolUse": [{
