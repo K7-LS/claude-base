@@ -1,16 +1,5 @@
 {
-  "enable": [
-    "excel-helper",
-    "word-helper",
-    "doc-extract",
-    "pdf-edit",
-    "domain-grilling",
-    "karpathy-guidelines",
-    "handoff-to-new-chat",
-    "llm-interop",
-    "web-access",
-    "ru-writing-style"
-  ],
+  "enable": [],
   "skip_reason": {
     "acad-recreation": "AutoCAD runtime и Claude-MCP обвязка; включать после capability-адаптера",
     "codex-bridge": "управление мостом со стороны Claude; Codex — вторая сторона моста, скилл ему не нужен",
@@ -43,5 +32,20 @@
     "yandex-disk-uploader": "локальная .env и организационная структура архива",
     "facts-layer": "поставляется project-controls@personal",
     "project-memory": "поставляется project-controls@personal"
+  },
+  "delivered_by_release": {
+    "comment": "Скиллы доставляет релиз базы Codex (пакет + плагины); синк их НЕ раздаёт junction-ом. Foundation владеет ~/.agents/skills как managed surface и отвергает reparse point: план установки падал с UNSAFE_PATH/ACTIVE_DRIFT при полностью совпадающем содержимом. Проверено 2026-09-02: все перечисленные скиллы присутствуют в codex-base 0.1.27, junction-раздача была дублированием.",
+    "skills": [
+      "doc-extract",
+      "domain-grilling",
+      "excel-helper",
+      "handoff-to-new-chat",
+      "karpathy-guidelines",
+      "llm-interop",
+      "pdf-edit",
+      "ru-writing-style",
+      "web-access",
+      "word-helper"
+    ]
   }
 }
