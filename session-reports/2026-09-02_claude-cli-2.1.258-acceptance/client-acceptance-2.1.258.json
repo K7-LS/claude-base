@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "target": "claude",
+  "verdict": "PASS",
+  "client": {
+    "id": "claude-code",
+    "version": "2.1.258"
+  },
+  "distribution": {
+    "method": "official-binary",
+    "package_id": "win32-x64/claude.exe",
+    "package_version": "2.1.258",
+    "scope": "current-user",
+    "source": "https://downloads.claude.ai/claude-code-releases/2.1.258/win32-x64/claude.exe"
+  },
+  "binary": {
+    "sha256": "22f5f3a44093e14c75a4d1c8ce25c730b21dd634318fbe3268e9057d12b17c41",
+    "bytes": 218507936,
+    "authenticode_status": "Valid",
+    "signer": "Anthropic, PBC",
+    "issuer": "DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1",
+    "timestamped": true
+  },
+  "runtime_smoke": {
+    "version_command": [
+      "claude",
+      "--version"
+    ],
+    "version_output": "2.1.258 (Claude Code)",
+    "version_exit_code": 0,
+    "help_exit_code": 0,
+    "model_requests": 0,
+    "provider_login": "NOT_RUN"
+  },
+  "limitations": [
+    "This accepts only the exact client binary and zero-model CLI smoke.",
+    "It does not prove provider account, region, model, or base canary eligibility.",
+    "The release URL was verified by HTTP HEAD only (status 200, Content-Length 218507936 matches the local file); the remote payload was not downloaded, so its SHA-256 was not compared.",
+    "The binary was obtained by the native updater (claude update), not by a fresh download from the URL recorded above.",
+    "This document is a candidate produced outside the managed base: runtime/client-acceptance.json is pinned by SHA-256 in components.lock.json and in the launcher state, and was left untouched."
+  ]
+}
