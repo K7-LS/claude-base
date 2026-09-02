@@ -1,4 +1,4 @@
-# grilling-detector.ps1 - UserPromptSubmit hook for the domain-grilling skill.
+﻿# grilling-detector.ps1 - UserPromptSubmit hook for the domain-grilling skill.
 # Reads the hook JSON from stdin, matches the user prompt against строй-trigger
 # phrases, and (on a hit) prints a reminder to stdout so Claude Code injects it
 # into context before the turn.

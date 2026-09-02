@@ -1,4 +1,4 @@
-# session_start.ps1 - project-memory SessionStart hook (skill project-memory)
+﻿# session_start.ps1 - project-memory SessionStart hook (skill project-memory)
 # If cwd (or a parent, up to 12 levels) is a memory project (has Claude\<journal>):
 #   1) prints the top 2 journal entries into session context ("read journal first"),
 #   2) writes a small cwd-project cache used by project_context.ps1.

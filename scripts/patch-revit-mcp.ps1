@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Idempotent local-proxy / IPv4 fix for the revit-mcp-python MCP client (main.py).
 

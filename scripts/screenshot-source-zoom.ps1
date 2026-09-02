@@ -1,4 +1,4 @@
-# screenshot-source-zoom.ps1 — PreToolUse hook (этаж «визуальная сверка»).
+﻿# screenshot-source-zoom.ps1 — PreToolUse hook (этаж «визуальная сверка»).
 # Срабатывает перед скрин-инструментами (matcher "screenshot|zoom" в settings.json).
 # Инжектит модели напоминание (anti-pattern A11.1): для чтения МЕЛКОЙ детали поднимай
 # разрешение У ИСТОЧНИКА, а не цифровым зумом готового растра (та же пиксельная каша).
