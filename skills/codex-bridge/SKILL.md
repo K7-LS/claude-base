@@ -20,7 +20,9 @@ Codex) — «поднимать» нужно только просмотр и п
 
 - Claude → Codex: вызови `mcp__codex__codex` с коротким пингом (sandbox
   `read-only`, approval-policy `never`); диалог продолжается через
-  `mcp__codex__codex-reply` по `threadId`.
+  `mcp__codex__codex-reply` по `threadId`. Нужен его shell (чтение файлов,
+  логов, `codex_sync check`) — sandbox `danger-full-access` с явным запретом
+  записи в промпте: read-only sandbox на DANIIL-LAPTOP сломан (см. грабли).
 - Codex → Claude: `codex exec "Вызови MCP-инструмент Read сервера claude с
   file_path = <мелкий файл>"` — на стороне Codex инструменты Claude называются
   `mcp__claude__<Tool>` и добираются через ToolSearch.
@@ -51,7 +53,16 @@ Codex) — «поднимать» нужно только просмотр и п
 - Мостовая сессия с записью файлов — sandbox `danger-full-access` (его же
   штатный режим из config.toml): `workspace-write` на Windows валит его shell
   ошибкой `CreateProcessWithLogonW failed: 267` на junction/Я.Диске.
-  Read-only пинги — по-прежнему `read-only`.
+  Чистые вопросы модели без shell — по-прежнему `read-only`.
+- **Read-only sandbox не запускает shell (2026-09-03, решение владельца —
+  идти через `danger-full-access`).** Managed-копия
+  `~/.llm-foundation/clients/codex-cli/bin/codex.exe` лежит отдельно от
+  `codex-resources`, поэтому `codex-windows-sandbox-setup.exe: program not
+  found`; MCP `codex` у Claude перерегистрирован на комплектный
+  `…/codex-cli/codex-home/packages/standalone/current/bin/codex.exe`
+  (бэкап `~/.claude.json.bak-codex-mcp-20260903`). С ним помощник
+  находится, но `CreateProcessAsUserW failed: 5` — задача на стороне Codex;
+  упаковка managed-копии — дефект инсталлятора (в плане переработки).
 - **Потолок вызова ~30 минут**: codex mcp-server не стримит прогресс, и клиент
   рубит вызов по idle-таймауту (дефолт 1800 с; в базе поднят env
   `MCP_TOOL_TIMEOUT=7200000`). Пакеты крои под ~20 минут работы Codex.

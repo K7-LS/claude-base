@@ -970,3 +970,51 @@ def test_drift_hook_uses_shared_overlay_parser_via_patcher():
     assert "ConvertFrom-Json" not in hook
     assert "--overlay-names" in hook
     assert "--from-overlay --check" in hook
+
+
+def test_canon_table_outside_managed_is_canon_newer_and_sync_relocates(make_canon):
+    # Таблица канона ([mcp_servers.<whitelist>] или [agents.<native>]) оказалась
+    # снаружи managed-блока (старый sync или App): значения те же, только место.
+    # check — canon-newer, не manual-drift; sync переносит таблицу внутрь блока,
+    # дубля нет, TOML валиден, повторный sync идемпотентен (вердикт Codex 2026-09-03).
+    import re as _re
+    import tomllib as _toml
+    from codex_sync import BEGIN, END, check, sync
+    home = make_canon()
+    assert sync(home) == 0
+    cfg = home / ".codex" / "config.toml"
+    raw = cfg.read_text(encoding="utf-8")
+    block = _re.search(_re.escape(BEGIN) + r"\n(.*?)\n" + _re.escape(END), raw, _re.S).group(1)
+    section = _re.search(r"(?ms)^\[mcp_servers\.time\]\n(?:(?!^\[).*\n?)*", block).group(0)
+    moved = raw.replace(block, block.replace(section, "").rstrip()) + "\n" + section.strip() + "\n"
+    _toml.loads(moved.replace(BEGIN, "").replace(END, ""))
+    cfg.write_text(moved, encoding="utf-8")
+
+    res = check(home)
+    assert "config.toml#managed" in res["canon-newer"]
+    assert "config.toml#managed" not in res["manual-drift"]
+
+    assert sync(home) == 0
+    merged = cfg.read_text(encoding="utf-8")
+    _toml.loads(merged.replace(BEGIN, "").replace(END, ""))
+    assert merged.count("[mcp_servers.time]") == 1
+    assert merged.index("[mcp_servers.time]") < merged.index(END)
+    assert "x = 1" in merged                                  # чужой top-level ключ сохранён
+    assert sync(home) == 0
+    assert check(home)["manual-drift"] == [] and check(home)["canon-newer"] == []
+
+
+def test_user_table_with_other_name_outside_managed_survives_relocation(make_canon):
+    # Перенос касается только таблиц из payload канона: чужая [agents.foo] снаружи
+    # блока остаётся на месте и не считается дрейфом.
+    import tomllib as _toml
+    from codex_sync import check, sync
+    home = make_canon()
+    assert sync(home) == 0
+    cfg = home / ".codex" / "config.toml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") + "\n[agents.foo]\nbar = 1\n", encoding="utf-8")
+    assert check(home)["manual-drift"] == []
+    assert sync(home) == 0
+    merged = cfg.read_text(encoding="utf-8")
+    assert merged.count("[agents.foo]") == 1 and "bar = 1" in merged
+    _toml.loads(merged.replace("# >>> claude-base managed >>>", "").replace("# <<< claude-base managed <<<", ""))

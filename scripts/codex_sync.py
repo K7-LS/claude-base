@@ -63,12 +63,42 @@ def _dedupe_codex_runtime_tables(runtime: str) -> str:
         by_name[name] = runtime[start:end].strip()
     return "\n\n".join(by_name[name] for name in order)
 
+def _table_sections(text: str) -> dict:
+    """Имя таблицы → её текст (заголовок и тело, без внешних пробелов) в порядке
+    появления; при дубле имени берётся первая копия. Top-level ключи не входят."""
+    headers = list(re.finditer(r"(?m)^\[(?P<name>[^\]]+)\][ \t]*$", text))
+    out = {}
+    for i, header in enumerate(headers):
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        out.setdefault(header.group("name"), text[header.start():end].strip())
+    return out
+
+def _strip_tables(text: str, names) -> str:
+    """Убрать из text таблицы с именами из names; остальной текст не трогать."""
+    headers = list(re.finditer(r"(?m)^\[(?P<name>[^\]]+)\][ \t]*$", text))
+    if not headers or not names:
+        return text
+    kept, cursor = [], 0
+    for i, header in enumerate(headers):
+        start = header.start()
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        kept.append(text[cursor:start])
+        if header.group("name") not in names:
+            kept.append(text[start:end])
+        cursor = end
+    return "".join(kept)
+
 def apply_managed_block(existing: str, payload: str) -> str:
     block = f"{BEGIN}\n{payload.rstrip()}\n{END}\n"
     pattern = re.compile(re.escape(BEGIN) + r"\n(.*?)\n?" + re.escape(END) + r"\n?", re.S)
     old_payloads = [m.group(1) for m in pattern.finditer(existing)]
     stripped = pattern.sub("", existing)          # убрать ВСЕ старые блоки
     stripped, runtime = _split_codex_runtime_tables(stripped)
+    # Таблицы, которые определяет managed-блок ([agents.<native>], [mcp_servers.*]
+    # из whitelist), снаружи блока не оставляем: дубль таблицы — невалидный TOML.
+    # Base-таблицы, переопределённые пользователем снаружи, в payload не попадают
+    # (render_base_tables их пропускает), поэтому не трогаются.
+    stripped = _strip_tables(stripped, set(_table_sections(payload)))
     for old_payload in old_payloads:
         _, inside_runtime = _split_codex_runtime_tables(old_payload)
         if inside_runtime:
@@ -573,7 +603,8 @@ def collect_agent_tomls(agents_dir: Path, registry: dict | None = None) -> dict:
     return out
 
 LANG_LINE = ("Отвечай пользователю по-русски. Код, имена файлов и идентификаторы — "
-             "латиницей; комментарии в коде — по-русски.\n\n")
+             "латиницей или гибридно (латиница + русские слова); комментарии в коде — "
+             "по-русски.\n\n")
 
 def render_agents_md(core: str, layer: str) -> str:
     out = LANG_LINE + core.strip() + "\n\n---\n\n" + layer.strip() + "\n"
@@ -796,6 +827,29 @@ def read_disk_output(home: Path, key: str):
         return m.group(1).rstrip() if m else None
     return p.read_text(encoding="utf-8")
 
+def _managed_matches_with_outside_tables(home: Path, disk_block: str, expected: str) -> bool:
+    """Блок на диске отличается от ожидания только тем, что часть таблиц канона
+    лежит снаружи блока с тем же текстом (старый sync или App разнесли их):
+    безопасно перенести внутрь — это canon-newer, а не ручной дрейф."""
+    exp = _table_sections(expected)
+    have = _table_sections(_split_codex_runtime_tables(disk_block)[0])
+    if set(have) - set(exp):
+        return False
+    p = _output_path(home, "config.toml#managed")
+    text = p.read_text(encoding="utf-8") if p.exists() else ""
+    outside = re.compile(re.escape(BEGIN) + r".*?" + re.escape(END) + r"\n?", re.S).sub("", text)
+    out = _table_sections(outside)
+    moved = False
+    for name, body in exp.items():
+        if name in have:
+            if have[name] != body:
+                return False
+        elif out.get(name) == body:
+            moved = True
+        else:
+            return False
+    return moved
+
 def check(home: Path, expected=None, context=None) -> dict:
     """Трёхсторонняя сверка канон ↔ манифест ↔ диск. Категория на каждый ключ рендера."""
     res = {"clean": [], "canon-newer": [], "manual-drift": []}
@@ -812,6 +866,10 @@ def check(home: Path, expected=None, context=None) -> dict:
         elif key == "config.toml#managed" and disk is not None and _split_codex_runtime_tables(disk)[0].rstrip() == expected[key]:
             # App мог вписать собственные доверенные хеши внутрь старого managed-блока.
             # Это безопасная миграция: sync вынесет их за маркер, не затирая значения.
+            res["canon-newer"].append(key)
+        elif key == "config.toml#managed" and disk is not None and \
+                _managed_matches_with_outside_tables(home, disk, expected[key]):
+            # Таблицы канона лежат снаружи блока с теми же значениями — sync перенесёт внутрь.
             res["canon-newer"].append(key)
         elif disk is None or base_outputs.get(key) == _sha(disk):
             res["canon-newer"].append(key)    # диск = то, что синк писал в прошлый раз → безопасно перегенерить
