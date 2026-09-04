@@ -1,23 +1,22 @@
-# Handoff (закрытие сессии 2026-09-04 ~19:30, DANIIL-LAPTOP)
+# Handoff (закрытие сессии 2026-09-04 ~21:00, DANIIL-LAPTOP)
 
 ## TL;DR
-- Сделали: canary 0.4.3 провалился (reparse-гард против junction Codex) → #76 фикс + #78 файлы Codex в комплекте + #79/#80 → 0.4.4 принят на ноутбуке и станции (Codex 0.153.0 из комплекта). Вечером: ярлык открывал установщик → PR #81 (фикс + версия 0.4.5, CI перезапущен после flaky-теста).
-- Закрыли: read-only sandbox моста на 0.153.0 работает; Яндекс.Диск — закрыто владельцем; страх «всё потеряли» снят фактами (бэкапы в `~/.llm-foundation/backups/codex/20260904T100146Z…`, канон хаба в `~/.claude/codex-layer`).
-- Осталось (владелец сказал «да» и «сразу»): 1) восстановить канон хаба в `~/.codex`; 2) слить #81 → комплект 0.4.5 в синк → ярлык на станции; 3) повторить пакет Codex для сотрудников (codex-base 0.1.28 с блоком «Вопросы пользователю»).
+- Сделали: 1) канон хаба в `~/.codex` восстановлен (`codex_sync.py diff` пуст; `request_user_input` в AGENTS.md строки 114/126; хуки project-memory + мост в hooks.json, скрипты на месте); 2) #81 слит (main `3c09a2f` = 0.4.5), комплект 0.4.5 в синке (EXE SHA `54b02b6c…`, `диагностика-20260904-193252.json` OK, 7/7), 0.4.4 → `_прежний-2026-09-04-день`; 3) кандидат codex-base 0.1.28 собран и прошёл офлайн-приёмку (`CANDIDATE_OFFLINE` PASS), PR #24 в K7-LS/codex-base открыт, не слит.
+- Решения Codex по мосту (тред `01a06d44-3eb1-7691-ad8b-2501a0d887c6`, read-only, 11 мин): В1 — компактный блок «Вопросы пользователю» + сжатие «Обновление базы» (бюджет hot 1500 токенов = 4500 байт, итог 4479); В2 — project-memory-хуки в базу сотрудников не включать (вариант «в»: свой runtime, отдельный PR); В3 — включить его патч от 27.08 (SessionStart без `update-session-tools`), 8 коммитов ветки `codex/project-memory-unified` не включать.
+- Владелец: проверить ярлык на станции (раздел ниже); решить гейты 0.1.28 (merge PR → matched A/B платный → canary → release).
 
 ## Состояние артефактов
-- **#81 слит** (squash, ~19:40): main = 0.4.5, worktree и ветка убраны; CI после повтора зелёный (упавший тест — flaky). Комплект 0.4.5 ещё не собран.
-- Синк `…/LLM/Разработка/K7-Launcher-Employee` = 0.4.4 (0.4.3 в `_прежний-2026-09-04-утро`); zip 0.4.4 на рабочем столе ноутбука (можно удалить). Кеш файлов Codex для сборки: `~/repos/llm-foundation-installer/.work/client-assets/codex-cli/0.153.0`.
-- Скрипты рядом с отчётом: `release-next.py` (копирует, не перемещает), `whats-new-0.4.5.md`. Незакоммичено в `~/.claude`: правки хаба владельца от 03.09 (codex-layer, core) + этот отчёт — уйдут автопушем.
-- `~/.codex`: база 0.1.27 перезаписала AGENTS.md/hooks.json/agents/config#managed; `codex_sync.py diff` показывает дрейф по всем ним; неуправляемые скиллы и `mcp_servers.claude` на месте.
-- `~/repos/codex-base`: незакоммичены `runtime/hooks.json` («One-way Codex base release notification»), `runtime/hooks/check_release.ps1`, `tests/test_session_tools_runtime.py` — чужая незавершённая работа (Codex, 03.09), не терять.
+- Инсталлятор: main `3c09a2f` (0.4.5). Синк `…/LLM/Разработка/K7-Launcher-Employee` = 0.4.5 (`release-next.py build/sync`). `.work/acceptance/engine-ps7` и `dist/foundation-acceptance.json` регенерированы под движок 0.5.10 (`tools/run-acceptance.py`: 499 тестов, 90 + 90 сценариев, PASS).
+- codex-base: worktree `~/repos/.worktrees/codex-base-0.1.28`, ветка `fix/agents-user-questions` = `k7ls/main` 175f7ff + `6e4e66d` (патч хуков) + `a5a19c0` (блок AGENTS, `generate_docs.py`). Кандидат: `~/repos/codex-base/dist/candidate-0.1.28/` (zip SHA `65a78242…`, components lock `2f462a55…`, evidence `c4563106…`, источник `a5a19c0`, движок 0.5.10). Основной клон `~/repos/codex-base` не тронут (ветка `codex/project-memory-unified`, незакоммиченные правки Codex на месте; remote `k7ls` добавлен).
+- `~/.codex`: канон хаба, `diff` пуст; пользовательский `model_reasoning_effort = "xhigh"` в config.toml оставлен. После правки hooks.json Codex отключает хуки до подтверждения доверия в интерактивном Codex.
+- Скилл `handoff-to-new-chat`: вопрос про подписку убран (шаг 1b), FULL по умолчанию, LITE по явной просьбе (в `~/.claude` не закоммичено, уйдёт автопушем). Память проекта: два файла в `projects/…/memory` (раскладка репо codex-base, условия сборки кандидата).
+- Временно вынесено: `~/repos/.tmp-ps-fixture-leftovers-20260904` — два каталога `test_official_script_rejects_p0` (битые фикстуры `install.ps1`) из `.work/архив/до-2026-07-29` и из worktree `codex-detection-singbox-ux-repair`; чекер синтаксиса обходил их и ронял приёмку. Вернуть или удалить — владелец.
 
 ## Открытые вопросы владельцу
-- Копия центра запуска в профиле без файлов Codex (установка из неё — сетью): копировать +130 МБ или оставить установки за синком.
-- Блокировка `codex-cli` при подъёме пина (`MANAGED_COMMAND_INTEGRITY_FAILED` до установки) — дизайн.
-- Claude на станции не ставится: `INVALID_PACKAGE` collision `acad-recreation` (с 03.09) — отдельная задача.
-- Нужны ли в пакете сотрудников хуки уровня Claude (project-memory) — сейчас их нет в хабе для Codex.
-- Диск: исключить мусорные деревья из синка; шаги мастера; SOCKS5; sing-box для нескольких клиентов.
+- Гейты 0.1.28: merge PR #24 (при squash — пересобрать кандидат из merge-коммита main, чтобы тег и asset совпадали; в 0.1.27 тег `codex-v0.1.27` на 175f7ff, asset от 2a460b1); matched A/B платный (новая авторизация); canary; release.
+- Дрейф `claude-base-v2/project-memory` против собственного `shared-components.lock.json` (lock от 13.08, скилл менялся 25.08 и 02.09) — release-set job трёх репо упадёт; починка в claude-base-v2.
+- Project-memory-хуки для сотрудников — отдельный PR (вариант «в»).
+- Прежние: claude на станции (`INVALID_PACKAGE` collision `acad-recreation`); копия центра запуска без файлов Codex; блокировка `codex-cli` при подъёме пина; мусорные деревья в синке; чип «исключить .work/.worktrees из check-ps-syntax.ps1».
 
 ## Как проверять центр запуска на станции (ответ владельцу)
 1. Дождаться в папке синка 0.4.5 (`bundle-manifest.json` → `"version": "0.4.5"`, окно диагностики «Employee Preview v0.4.5»).
@@ -26,6 +25,38 @@
 4. `ДИАГНОСТИКА.cmd` → отчёт в «Ответ с рабочего ПК» (`codex-cli` RESOLVED, версия 0.4.5).
 
 ## Промпт для нового чата
+> Привет. Продолжение «инсталлятор 0.4.x + база Codex» (DANIIL-LAPTOP, 04.09.2026, ночь). Владелец: «сразу приступай». Прочитай верхний блок «Handoff» в `~/.claude/session-reports/2026-09-04_installer-version-0.4.3/report.md`, затем `rework-bases/Claude/STATUS.md` и верх журнала. Состояние: 0.4.5 в синке (ждём отчёт станции по ярлыку в «Ответ с рабочего ПК»); кандидат codex-base 0.1.28 собран (PR #24 в K7-LS/codex-base, не слит), гейты — владельца. Дальше по его решению: merge → matched A/B → canary → release (`tools/run_matched_ab.py`, `run_live_canary.py`, `promote_candidate.py` — читать README codex-base); отчёт станции с 0.4.5 → разбор; shared-lock в claude-base-v2; проверка хуков Codex после подтверждения доверия. Правила: зелёные PR инсталлятора сливать самому (squash, delete-branch); каждый изменённый EXE — новая версия; решения, меняющие результат, — через владельца; решения про Codex — Codex по мосту (read-only, фоновым агентом); не двигать файлы в синке при работающем клиенте Диска; скрипты и коммиты файлом, не heredoc; мониторы CI через `gh … --jq`; кандидат codex-base собирать из worktree на `k7ls/main` с движком, регенерированным `run-acceptance.py` инсталлятора; `K7_OFFICECLI_BINARY_PATH=$HOME/repos/.officecli-cache/officecli.exe`.
+
+---
+
+## Прежний handoff (закрытие ~19:30)
+
+### TL;DR
+- Сделали: canary 0.4.3 провалился (reparse-гард против junction Codex) → #76 фикс + #78 файлы Codex в комплекте + #79/#80 → 0.4.4 принят на ноутбуке и станции (Codex 0.153.0 из комплекта). Вечером: ярлык открывал установщик → PR #81 (фикс + версия 0.4.5, CI перезапущен после flaky-теста).
+- Закрыли: read-only sandbox моста на 0.153.0 работает; Яндекс.Диск — закрыто владельцем; страх «всё потеряли» снят фактами (бэкапы в `~/.llm-foundation/backups/codex/20260904T100146Z…`, канон хаба в `~/.claude/codex-layer`).
+- Осталось (владелец сказал «да» и «сразу»): 1) восстановить канон хаба в `~/.codex`; 2) слить #81 → комплект 0.4.5 в синк → ярлык на станции; 3) повторить пакет Codex для сотрудников (codex-base 0.1.28 с блоком «Вопросы пользователю»).
+
+### Состояние артефактов
+- **#81 слит** (squash, ~19:40): main = 0.4.5, worktree и ветка убраны; CI после повтора зелёный (упавший тест — flaky). Комплект 0.4.5 ещё не собран.
+- Синк `…/LLM/Разработка/K7-Launcher-Employee` = 0.4.4 (0.4.3 в `_прежний-2026-09-04-утро`); zip 0.4.4 на рабочем столе ноутбука (можно удалить). Кеш файлов Codex для сборки: `~/repos/llm-foundation-installer/.work/client-assets/codex-cli/0.153.0`.
+- Скрипты рядом с отчётом: `release-next.py` (копирует, не перемещает), `whats-new-0.4.5.md`. Незакоммичено в `~/.claude`: правки хаба владельца от 03.09 (codex-layer, core) + этот отчёт — уйдут автопушем.
+- `~/.codex`: база 0.1.27 перезаписала AGENTS.md/hooks.json/agents/config#managed; `codex_sync.py diff` показывает дрейф по всем ним; неуправляемые скиллы и `mcp_servers.claude` на месте.
+- `~/repos/codex-base`: незакоммичены `runtime/hooks.json` («One-way Codex base release notification»), `runtime/hooks/check_release.ps1`, `tests/test_session_tools_runtime.py` — чужая незавершённая работа (Codex, 03.09), не терять.
+
+### Открытые вопросы владельцу
+- Копия центра запуска в профиле без файлов Codex (установка из неё — сетью): копировать +130 МБ или оставить установки за синком.
+- Блокировка `codex-cli` при подъёме пина (`MANAGED_COMMAND_INTEGRITY_FAILED` до установки) — дизайн.
+- Claude на станции не ставится: `INVALID_PACKAGE` collision `acad-recreation` (с 03.09) — отдельная задача.
+- Нужны ли в пакете сотрудников хуки уровня Claude (project-memory) — сейчас их нет в хабе для Codex.
+- Диск: исключить мусорные деревья из синка; шаги мастера; SOCKS5; sing-box для нескольких клиентов.
+
+### Как проверять центр запуска на станции (ответ владельцу)
+1. Дождаться в папке синка 0.4.5 (`bundle-manifest.json` → `"version": "0.4.5"`, окно диагностики «Employee Preview v0.4.5»).
+2. Установка: двойной клик по `K7-AI-Foundation-Employee-Preview.exe` без параметров → «Проверить план и установить». Это обновит копию в `%USERPROFILE%\.llm-foundation\launcher` и ярлыки.
+3. Центр запуска: ярлык «K7 Launch Center» на рабочем столе (или `K7-AI-Launch-Center-Employee-Preview.cmd` в папке синка). Ожидание: окно с карточками Codex/Claude/OpenCode/Chrome/VS Code и кнопками «Запустить … →», без чекбоксов «Установить». На 0.4.4 там будет установщик — это и есть баг #81.
+4. `ДИАГНОСТИКА.cmd` → отчёт в «Ответ с рабочего ПК» (`codex-cli` RESOLVED, версия 0.4.5).
+
+### Промпт для нового чата
 > Привет. Это продолжение сессии «инсталлятор 0.4.x + база Codex» с DANIIL-LAPTOP (04.09.2026, вечер). Подписка MAX. Владелец сказал: «сразу приступай». Прочитай `~/.claude/session-reports/2026-09-04_installer-version-0.4.3/report.md` (верхний блок «Handoff» целиком, остальное — по секциям через Grep `^##`), затем `rework-bases/Claude/STATUS.md` и верх журнала.
 >
 > Сделай по порядку, без вопросов там, где решение уже есть:

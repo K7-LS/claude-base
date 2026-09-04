@@ -1,0 +1,10 @@
+{
+  "head": "3c09a2f",
+  "exe_sha256": "54b02b6cc65c1c409a9ce1712feb918e6edf1826fc51a55d13d02778c233ce9c",
+  "file_version": "0.4.5.0",
+  "assets": [
+    "codex-release-0.153.0.json",
+    "codex-package_SHA256SUMS",
+    "codex-package-x86_64-pc-windows-msvc.tar.gz"
+  ]
+}
