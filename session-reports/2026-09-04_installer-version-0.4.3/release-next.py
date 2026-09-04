@@ -199,14 +199,22 @@ def phase_sync(version, prev_version, prev_name, whats_new_path, header_note):
                            prev_version, prev_name, whats_new, header_note)
     new_manifest = json.loads((out / MANIFEST).read_text(encoding="utf-8"))
     new_assets = bundled_files(new_manifest)
+    # Внутри синка ничего не перемещаем: клиент Яндекс.Диска ломает базу на
+    # move в новую подпапку (04.09). Прежний комплект копируем в архив, новые
+    # файлы записываем поверх одноимённых.
     prev.mkdir()
     for name in old_files:
-        shutil.move(str(SYNC / name), str(prev / name))
+        shutil.copy2(SYNC / name, prev / name)
+    for name in old_files:
+        if sha256(prev / name) != sha256(SYNC / name):
+            raise SystemExit(f"FAIL: архивная копия {name} не совпала с оригиналом")
     for name in [EXE, CMD, MANIFEST, SINGBOX] + [a[0] for a in new_assets]:
         shutil.copy2(out / name, SYNC / name)
     shutil.copy2(REPO / "tools" / DIAG_PS1, SYNC / DIAG_PS1)
-    shutil.copy2(prev / DIAG_CMD, SYNC / DIAG_CMD)
     (SYNC / HOWTO).write_text(new_howto, encoding="utf-8")
+    stale = [a[0] for a in bundled_files(old_manifest) if a[0] not in {x[0] for x in new_assets}]
+    for name in stale:
+        (SYNC / name).unlink()
     if sha256(SYNC / EXE) != build["exe_sha256"]:
         raise SystemExit("FAIL: SHA EXE в синке не совпал со сборкой")
     for name, digest, size in new_assets:
