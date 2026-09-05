@@ -16,6 +16,7 @@
 - Гейты 0.1.28: merge PR #24 (при squash — пересобрать кандидат из merge-коммита main, чтобы тег и asset совпадали; в 0.1.27 тег `codex-v0.1.27` на 175f7ff, asset от 2a460b1); matched A/B платный (новая авторизация); canary; release.
 - Дрейф `claude-base-v2/project-memory` против собственного `shared-components.lock.json` (lock от 13.08, скилл менялся 25.08 и 02.09) — release-set job трёх репо упадёт; починка в claude-base-v2.
 - Project-memory-хуки для сотрудников — отдельный PR (вариант «в»).
+- Домашний ПК владельца на codex-base 0.1.17: `$sync-base` этой версии не может обновиться (BLOCKED_USER_DECISION на старом движке 0.3.6; мост 0.1.25 после установки роняет doctor по session tools). Воспроизведено на фейковом доме 05.09; 0.1.17 → 0.1.27 движком 0.5.10 проходит. Рекомендация: инсталлятор K7 (Employee Preview из синка), не `$sync-base`.
 - Прежние: claude на станции (`INVALID_PACKAGE` collision `acad-recreation`); копия центра запуска без файлов Codex; блокировка `codex-cli` при подъёме пина; мусорные деревья в синке; чип «исключить .work/.worktrees из check-ps-syntax.ps1».
 
 ## Как проверять центр запуска на станции (ответ владельцу)
